@@ -52,6 +52,7 @@ GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_O
 
 echo "$GIT_CODEVERSION"
 
+NL=$'\n'
 MAIL_EXTENSION_AVAILABLE=0
 [[ $(which raspiImageMail.sh) ]] && MAIL_EXTENSION_AVAILABLE=1
 
@@ -225,7 +226,15 @@ else
 fi
 
 if (( $MAIL_EXTENSION_AVAILABLE )); then
-    raspiImageMail.sh "raspiBackupRestore2Imange: ${IMAGE_FILENAME##*/}" "$(echo -e "$(cat $MSG_FILE)")"
+    IMAGE_FILENAME=${IMAGE_FILENAME##*/}
+    HOST_NAME=${IMAGE_FILENAME%%-*}
+    if (( $RC )); then
+        status="with errors finished"
+    else    
+        status="finished successfully"
+    fi  
+    BODY="raspiBackupRestore2Image.sh $IMAGE_FILENAME$NL$NL$(echo -e "$(cat $MSG_FILE)")"    
+    raspiImageMail.sh "$HOSTNAME - Restore $status"  "$BODY"
     if [[ $? = 0 ]]; then
         echo "-- Send email succeeded!"
         RC=0
@@ -233,4 +242,4 @@ if (( $MAIL_EXTENSION_AVAILABLE )); then
 fi
 
 exit $RC
-
+ 
