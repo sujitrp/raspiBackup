@@ -31,7 +31,7 @@ if [ ! -n "$BASH" ] ;then
    exit 127
 fi
 
-VERSION="0.6.3.2-beta"
+VERSION="0.6.3.2-beta"	# -beta or -hotfix suffixes possible
 
 # add pathes if not already set (usually not set in crontab)
 
@@ -54,11 +54,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 MYPID=$$
 
-GIT_DATE="$Date: 2018-01-24 21:24:32 +0100$"
+GIT_DATE="$Date: 2018-02-01 21:36:12 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 028ca64$"
+GIT_COMMIT="$Sha1: 0dd21f6$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -76,6 +76,7 @@ SCRIPT_DIR=$( cd $( dirname ${BASH_SOURCE[0]}); pwd | xargs readlink -f)
 # URLs and temp filenames used
 
 DOWNLOAD_URL="$MYHOMEURL/downloads/raspibackup-sh/download"
+BETA_DOWNLOAD_URL="$MYHOMEURL/downloads/raspibackup-beta-sh/download"
 PROPERTY_URL="$MYHOMEURL/downloads/raspibackup0613-properties/download"
 VERSION_URL_EN="$MYHOMEURL/en/versionhistory"
 VERSION_URL_DE="$MYHOMEURL/de/versionshistorie"
@@ -351,8 +352,8 @@ MSG_ANSWER_CHARS_YES=37
 MSG_EN[$MSG_ANSWER_CHARS_YES]="Yy"
 MSG_DE[$MSG_ANSWER_CHARS_YES]="Jj"
 MSG_ANSWER_YES_NO=38
-MSG_EN[$MSG_ANSWER_YES_NO]="RBK0038I: Are you sure? %1."
-MSG_DE[$MSG_ANSWER_YES_NO]="RBK0038I: Bist Du sicher? %1."
+MSG_EN[$MSG_ANSWER_YES_NO]="RBK0038I: Are you sure? %1 "
+MSG_DE[$MSG_ANSWER_YES_NO]="RBK0038I: Bist Du sicher? %1 "
 MSG_MAILPROGRAM_NOT_INSTALLED=39
 MSG_EN[$MSG_MAILPROGRAM_NOT_INSTALLED]="RBK0039E: Mail program %1 not installed to send emails."
 MSG_DE[$MSG_MAILPROGRAM_NOT_INSTALLED]="RBK0039E: Mail Program %1 ist nicht installiert um eMail szu senden."
@@ -713,9 +714,9 @@ MSG_DE[$MSG_SKIP_STOPPING_SERVICES]="RBK0157W: Keine Services sind zu stoppen."
 MSG_MAIN_BACKUP_PROGRESSING=158
 MSG_EN[$MSG_MAIN_BACKUP_PROGRESSING]="RBK0158I: Creating native %1 backup %2."
 MSG_DE[$MSG_MAIN_BACKUP_PROGRESSING]="RBK0158I: %1 Backup %2 wird erstellt."
-MSG_CHECKING_FOR_BETA=159
-MSG_EN[$MSG_CHECKING_FOR_BETA]="RBK0159I: Checking for beta version."
-MSG_DE[$MSG_CHECKING_FOR_BETA]="RBK0159I: Prüfe ob eine Beta Version verfügbar ist."
+#MSG_CHECKING_FOR_BETA=159
+#MSG_EN[$MSG_CHECKING_FOR_BETA]="RBK0159I: Checking for a beta version."
+#MSG_DE[$MSG_CHECKING_FOR_BETA]="RBK0159I: Prüfe ob eine Beta Version verfügbar ist."
 MSG_TARGETSD_SIZE_TOO_SMALL=160
 MSG_EN[$MSG_TARGETSD_SIZE_TOO_SMALL]="RBK0160E: Target %1 with %2 is smaller than backup source with %3."
 MSG_DE[$MSG_TARGETSD_SIZE_TOO_SMALL]="RBK0160E: Ziel %1 mit %2 ist kleiner als die Backupquelle mit %3."
@@ -745,8 +746,8 @@ MSG_DE[$MSG_UMOUNT_ERROR]="RBK0166E: Umount für %1 fehlerhaft. RC %2. Vielleich
 #MSG_EN[$MSG_ALREADY_ACTIVE]="RBK0167E: $MYSELF already up and running"
 #MSG_DE[$MSG_ALREADY_ACTIVE]="RBK0167E: $MYSELF ist schon gestartet"
 MSG_BETAVERSION_AVAILABLE=168
-MSG_EN[$MSG_BETAVERSION_AVAILABLE]="RBK0168I: $MYSELF beta version %1 is available. Any help to test this beta is appreciated."
-MSG_DE[$MSG_BETAVERSION_AVAILABLE]="RBK0168I: $MYSELF Beta Version %1 ist verfügbar. Hilfe beim Testen dieser Beta ist sehr willkommen.."
+MSG_EN[$MSG_BETAVERSION_AVAILABLE]="RBK0168I: $MYSELF beta version %1 is available. Any help to test this beta is appreciated. Just install the new beta version with the raspiBackup installer."
+MSG_DE[$MSG_BETAVERSION_AVAILABLE]="RBK0168I: $MYSELF Beta Version %1 ist verfügbar. Hilfe beim Testen dieser Beta ist sehr willkommen. Einfach die neue Beta Version mit dem raspiBackup Installer installieren."
 MSG_ROOT_PARTITION_NOT_FOUND=169
 MSG_EN[$MSG_ROOT_PARTITION_NOT_FOUND]="RBK0169E: Target root partition %1 does not exist."
 MSG_DE[$MSG_ROOT_PARTITION_NOT_FOUND]="RBK0169E: Ziel Rootpartition %1 existiert nicht."
@@ -773,8 +774,8 @@ MSG_TOOL_ERROR_SKIP=174
 MSG_EN[$MSG_TOOL_ERROR_SKIP]="RBK0174I: Backup tool %1 error %2 ignored. Errormessages:$NL%3"
 MSG_DE[$MSG_TOOL_ERROR_SKIP]="RBK0174I: Backupprogramm %1 Fehler %2 wurde ignoriert. Fehlermeldungen:$NL%3"
 MSG_SCRIPT_UPDATE_NOT_REQUIRED=175
-MSG_EN[$MSG_SCRIPT_UPDATE_NOT_REQUIRED]="RBK0174I: %1 version %2 is newer than version %3."
-MSG_DE[$MSG_SCRIPT_UPDATE_NOT_REQUIRED]="RBK0174I: %1 Version %2 ist aktueller als Version %3."
+MSG_EN[$MSG_SCRIPT_UPDATE_NOT_REQUIRED]="RBK0175I: %1 version %2 is newer than version %3."
+MSG_DE[$MSG_SCRIPT_UPDATE_NOT_REQUIRED]="RBK0175I: %1 Version %2 ist aktueller als Version %3."
 MSG_INVALID_PARAMETER=176
 MSG_EN[$MSG_INVALID_PARAMETER]="RBK0175E: Invalid parameter %1 for option %2."
 MSG_DE[$MSG_INVALID_PARAMETER]="RBK0175E: Ungültiger Parameter %1 für Option %2."
@@ -814,6 +815,15 @@ MSG_DE[$MSG_IMG_ROOT_CREATE_PARTITION_FAILED]="RBK0185E: Rootpartitionserstellun
 MSG_DETAILED_ROOT_CHECKING=187
 MSG_EN[$MSG_DETAILED_ROOT_CHECKING]="RBK0187W: Rootpartition %1 will be checked for bad blocks during formatting. This will take some time. Please be patient."
 MSG_DE[$MSG_DETAILED_ROOT_CHECKING]="RBK0187W: Rootpartitionsformatierung für %1 prüft auf fehlerhafte Blocks. Das wird länger dauern. Bitte Geduld."
+MSG_UPDATE_TO_BETA=188
+MSG_EN[$MSG_UPDATE_TO_BETA]="RBK0188I: There is a Beta version of $MYSELF available. Upgrading current version %1 to %2."
+MSG_DE[$MSG_UPDATE_TO_BETA]="RBK0188I: Es ist eine Betaversion von $MYSELF verfügbar. Die momentane Version %1 auf %2 upgraded."
+MSG_UPDATE_ABORTED=189
+MSG_EN[$MSG_UPDATE_ABORTED]="RBK0189I: Version upgrade aborted."
+MSG_DE[$MSG_UPDATE_ABORTED]="RBK0189I: Versionsupgrade abgebrochen."
+MSG_UPDATE_TO_VERSION=190
+MSG_EN[$MSG_UPDATE_TO_VERSION]="RBK0190I: Upgrading $MYSELF from version %1 to %2."
+MSG_DE[$MSG_UPDATE_TO_VERSION]="RBK0190I: Es wird $MYSELF von Version %1 auf Version %2 upgraded."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -983,23 +993,24 @@ function getLocalizedMessage() { # messageNumber parm1 parm2
 
 function writeToConsole() {  # msglevel messagenumber message
 	local msg level
+	(( $noNL )) && noNL="-n"
 
 	level=$1
 	shift
 
 	if [[ ( $level -le $MSG_LEVEL ) ]]; then
-
 		msg="$(getMessageText $LANGUAGE "$@")"
 
 		if (( $INTERACTIVE )); then
-			echo -e "$msg" > /dev/tty
+			echo $noNL -e "$msg" > /dev/tty
 		else
-			echo -e "$msg" >> "$LOG_FILE"
+			echo $noNL -e "$msg" >> "$LOG_FILE"
 		fi
 
-		echo -e "$msg" >> "$LOG_MAIL_FILE"
+		echo $noNL -e "$msg" >> "$LOG_MAIL_FILE"
 		logIntoOutput $LOG_TYPE_MSG "$msg"
 	fi
+	unset noNL
 }
 
 # setup trap function
@@ -1455,7 +1466,7 @@ function downloadPropertiesFile() { # FORCE
 
 	if (( ! $REGRESSION_TEST )); then
 
-		if shouldDownloadPropertiesFile "$1"; then
+		if shouldRenewDownloadPropertiesFile "$1"; then
 
 			writeToConsole $MSG_LEVEL_MINIMAL $MSG_CHECKING_FOR_NEW_VERSION
 			local mode="N"; (( $PARTITIONBASED_BACKUP )) && mode="P"
@@ -1477,10 +1488,39 @@ function downloadPropertiesFile() { # FORCE
 				logItem "Download of $downloadURL failed with rc $rc"
 			fi
 		fi
+
+		parsePropertiesFile
 	fi
 
 	logExit "downloadPropertiesFile - $NEW_PROPERTIES_FILE"
 	return
+}
+
+#VERSION="0.6.3.1"
+#INCOMPATIBLE=""
+#DEPRECATED=""
+#BETA="0.6.3.2"
+
+function parsePropertiesFile() {
+
+	logEntry "parsePropertiesFile"
+
+	local properties=$(grep "^VERSION=" "$LATEST_TEMP_PROPERTY_FILE" 2>/dev/null)
+	[[ $properties =~ $PROPERTY_REGEX ]] && VERSION_PROPERTY=${BASH_REMATCH[1]}
+
+	properties=$(grep "^INCOMPATIBLE=" "$LATEST_TEMP_PROPERTY_FILE" 2>/dev/null)
+	[[ $properties =~ $PROPERTY_REGEX ]] && INCOMPATIBLE_PROPERTY=${BASH_REMATCH[1]}
+
+	properties=$(grep "^DEPRECATED=" "$LATEST_TEMP_PROPERTY_FILE" 2>/dev/null)
+	[[ $properties =~ $PROPERTY_REGEX ]] && DEPRECATED_PROPERTY=${BASH_REMATCH[1]}
+
+	properties=$(grep "^BETA=" "$LATEST_TEMP_PROPERTY_FILE" 2>/dev/null)
+	[[ $properties =~ $PROPERTY_REGEX ]] && BETA_PROPERTY=${BASH_REMATCH[1]}
+
+	logItem "Properties: v: $VERSION_PROPERTY i: $INCOMPATIBLE_PROPERTY d: $DEPRECATED_PROPERTY b: $BETA_PROPERTY"
+
+	logExit "parsePropertiesFile"
+
 }
 
 function isVersionDeprecated() { # versionNumber
@@ -1492,10 +1532,7 @@ function isVersionDeprecated() { # versionNumber
 	local deprecated=""
 
 	if (( $NEW_PROPERTIES_FILE && $HANDLE_DEPRECATED )); then
-		properties=$(grep "^DEPRECATED=" "$LATEST_TEMP_PROPERTY_FILE" 2>/dev/null)
-		logItem "Properties-Deprecated: $properties"
-		[[ $properties =~ $PROPERTY_REGEX ]] && deprecated=${BASH_REMATCH[1]}
-		local deprecatedVersions=( $deprecated )
+		local deprecatedVersions=( $DEPRECATED_PROPERTY )
 		containsElement "$1" "${deprecatedVersions[@]}"
 		(( $? )) && rc=0
 	fi
@@ -1504,7 +1541,7 @@ function isVersionDeprecated() { # versionNumber
 	return $rc
 }
 
-function shouldDownloadPropertiesFile() { # FORCE
+function shouldRenewDownloadPropertiesFile() { # FORCE
 
 	logEntry "shouldDownloadPropertiesFile"
 
@@ -1533,15 +1570,39 @@ function shouldDownloadPropertiesFile() { # FORCE
 	return $rc
 }
 
+function askYesNo() {
+
+	local yes_no=$(getLocalizedMessage $MSG_QUERY_CHARS_YES_NO)
+	local answer
+
+	noNL=1
+	writeToConsole $MSG_LEVEL_MINIMAL $MSG_ANSWER_YES_NO "$yes_no"
+
+	if (( $NO_YES_QUESTION )); then
+		answer=$(getLocalizedMessage $MSG_ANSWER_CHARS_YES)
+	else
+		read answer
+	fi
+
+	answer=${answer:0:1}	# first char only
+	answer=${answer:-"n"}	# set default no
+
+	local yes=$(getLocalizedMessage $MSG_ANSWER_CHARS_YES)
+	if [[ ! $yes =~ $answer ]]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function isNewVersionAvailable() {
 
 	logEntry "isNewVersionAvailable"
 
-	local oldVersion="0.0"
 	local newVersion="0.0"
 	local latestVersion="0.0"
 
-	local rc=2			# update not possible
+	local rc=99			# update not possible
 
 	local version="$VERSION"
 	local suffix=""
@@ -1553,10 +1614,7 @@ function isNewVersionAvailable() {
 	logItem "Versionsplit: $version - $suffix"
 
 	if (( $NEW_PROPERTIES_FILE )); then
-		properties=$(grep "^VERSION=" "$LATEST_TEMP_PROPERTY_FILE" 2>/dev/null)
-		logItem "Properties-Version: $properties"
-		local newVersion=""
-		[[ $properties =~ $PROPERTY_REGEX ]] && newVersion=${BASH_REMATCH[1]}
+		local newVersion=$VERSION_PROPERTY
 		latestVersion=$(echo -e "$newVersion\n$version" | sort -V | tail -1)
 		logItem "new: $newVersion runtime: $version latest: $latestVersion"
 
@@ -1640,7 +1698,7 @@ function startServices() { # noexit
 	logExit "startServices"
 }
 
-# update script with latest version if needed
+# update script with latest version
 
 function updateScript() { # restart
 
@@ -1652,6 +1710,7 @@ function updateScript() { # restart
 	local newVersion
 	local oldVersion
 	local newName
+	local updateNow=0
 
 	if (( $NEW_PROPERTIES_FILE )) ; then
 
@@ -1662,16 +1721,10 @@ function updateScript() { # restart
 		newVersion=${versions[1]}
 		oldVersion=${versions[2]}
 
+		logItem "$rc - $latestVersion - $newVersion - $oldVersion"
+
 		if (( ! $FORCE_UPDATE )) ; then
-
-			local incompatible=""
-			local properties=$(grep "^INCOMPATIBLE=" "$LATEST_TEMP_PROPERTY_FILE" 2>/dev/null)
-			logItem "Properties-Incompatible: $properties"
-			if [[ $properties =~ $PROPERTY_REGEX ]]; then
-				incompatible=${BASH_REMATCH[1]}
-			fi
-
-			local incompatibleVersions=( $incompatible )
+			local incompatibleVersions=( $INCOMPATIBLE_PROPERTY )
 			containsElement "$newVersion" "${incompatibleVersions[@]}"
 			if (( $? )); then
 				writeToConsole $MSG_LEVEL_MINIMAL $MSG_INCOMPATIBLE_UPDATE "$newVersion" "$(getLocalizedMessage $MSG_VERSION_HISTORY_PAGE)"
@@ -1679,7 +1732,30 @@ function updateScript() { # restart
 			fi
 		fi
 
-		if [[ $rc == 0 ]]; then
+		if [[ "$1" != "RESTART" ]]; then
+			local betaVersion=$(isBetaAvailable)
+
+			if [[ -n $betaVersion && "${betaVersion}-beta" > $oldVersion ]]; then
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_UPDATE_TO_BETA "$oldVersion" "${betaVersion}-beta"
+				if askYesNo; then
+					DOWNLOAD_URL="$BETA_DOWNLOAD_URL"
+					updateNow=1
+				fi
+			fi
+
+			if [[ $rc == 0 ]] && (( ! $updateNow )); then
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_UPDATE_TO_VERSION "$oldVersion" "$newVersion"
+				if ! askYesNo; then
+					writeToConsole $MSG_LEVEL_MINIMAL $MSG_UPDATE_ABORTED
+					exitNormal
+				fi
+				updateNow=1
+			fi
+		else
+			updateNow=1
+		fi
+
+		if (( $updateNow )); then
 			local file="${MYSELF}"
 			writeToConsole $MSG_LEVEL_MINIMAL $MSG_DOWNLOADING "$file" "$MYHOMEURL"
 			logItem "Download URL: $DOWNLOAD_URL"
@@ -1696,7 +1772,6 @@ function updateScript() { # restart
 					exec "$(which bash)" --noprofile "$0" "${invocationParms[@]}"
 				fi
 			fi
-
 		else
 			rm $MYSELF~ &>/dev/null
 			if [[ $rc == 1 ]]; then
@@ -2350,22 +2425,10 @@ function isBetaAvailable() {
 
 	logEntry "isBetaAvailable"
 
-	local downloadURL="$PROPERTY_URL"
 	local betaVersion=""
 
 	if (( $NEW_PROPERTIES_FILE )); then
-		local tmpFile=$(mktemp)
-
-		writeToConsole $MSG_LEVEL_DETAILED $MSG_CHECKING_FOR_BETA
-		wget $downloadURL -q --tries=$DOWNLOAD_RETRIES --timeout=$DOWNLOAD_TIMEOUT -O $tmpFile
-		local rc=$?
-		if [[ $rc == 0 ]]; then
-			properties=$(grep "^BETA=" "$tmpFile" 2>/dev/null)
-			local betaVersion=$(cut -d '=' -f 2 <<< $properties)
-			betaVersion=${betaVersion//\"/}
-		fi
-
-		rm $tmpFile	 &>/dev/null
+		betaVersion=${BETA_PROPERTY//\"/}
 	fi
 
 	echo $betaVersion
@@ -2441,7 +2504,7 @@ function cleanupTempFiles() {
 	fi
 
 	if [[ -f $MYSELF~ ]]; then
-		logItem "Removing newversion $MYSELF~"
+		logItem "Removing new version $MYSELF~"
 		rm -f $MYSELF~ &>/dev/null
 	fi
 
@@ -4166,19 +4229,7 @@ function restoreNonPartitionBasedBackup() {
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_WARN_ROOT_PARTITION_OVERWRITTEN $ROOT_PARTITION
 	fi
 
-    yes_no=$(getLocalizedMessage $MSG_QUERY_CHARS_YES_NO)
-
-	writeToConsole $MSG_LEVEL_MINIMAL $MSG_ANSWER_YES_NO "$yes_no"
-
-	if (( $NO_YES_QUESTION )); then
-		answer=$(getLocalizedMessage $MSG_ANSWER_CHARS_YES)
-	else
-		read answer
-	fi
-	answer=${answer:0:1}	# first char only
-	answer=${answer:-"n"}	# set default no
-   	yes=$(getLocalizedMessage $MSG_ANSWER_CHARS_YES)
-	if [[ ! $yes =~ $answer ]]; then
+	if ! askYesNo; then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_ABORTED
 		exitError $RC_RESTORE_FAILED
 	fi
@@ -4254,20 +4305,8 @@ function restorePartitionBasedBackup() {
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_CURRENT_PARTITION_TABLE "$RESTORE_DEVICE" "$current_partition_table"
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_WARN_RESTORE_PARTITION_DEVICE_OVERWRITTEN "$RESTORE_DEVICE"
 
-    yes_no=$(getLocalizedMessage $MSG_QUERY_CHARS_YES_NO)
-
-	writeToConsole $MSG_LEVEL_MINIMAL $MSG_ANSWER_YES_NO "$yes_no"
-
-	if (( $NO_YES_QUESTION )); then
-		answer=$(getLocalizedMessage $MSG_ANSWER_CHARS_YES)
-	else
-		read answer
-	fi
-	answer=${answer:0:1}	# first char only
-	answer=${answer:-"n"}	# set default no
-   	yes=$(getLocalizedMessage $MSG_ANSWER_CHARS_YES)
-	if [[ ! $yes =~ $answer ]]; then
-		writeToConsole $MSG_LEVEL_MINIMAL$MSG_RESTORE_ABORTED
+	if ! askYesNo; then
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_ABORTED
 		exitError $RC_RESTORE_FAILED
 	fi
 
