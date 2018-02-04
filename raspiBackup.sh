@@ -54,11 +54,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 MYPID=$$
 
-GIT_DATE="$Date: 2018-02-01 21:36:12 +0100$"
+GIT_DATE="$Date: 2018-02-04 19:33:09 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 0dd21f6$"
+GIT_COMMIT="$Sha1: 4c829d2$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -384,9 +384,9 @@ MSG_DE[$MSG_START_SERVICES_FAILED]="RBK0047E: Ein Fehler trat beim Starten von S
 MSG_STOP_SERVICES_FAILED=48
 MSG_EN[$MSG_STOP_SERVICES_FAILED]="RBK0048E: Error occured when stopping services. RC %1."
 MSG_DE[$MSG_STOP_SERVICES_FAILED]="RBK0048E: Ein Fehler trat beim Beenden von Services auf. RC %1."
-MSG_FILES_CHANGE_DURING_BACKUP=49
-MSG_EN[$MSG_FILES_CHANGE_DURING_BACKUP]="RBK0049W: Some files were changed or vanished during backup. RC %1 - ignoring change."
-MSG_DE[$MSG_FILES_CHANGE_DURING_BACKUP]="RBK0049W: Einige Dateien haben sich während des Backups geändert oder sind verschwunden. RC %1 - Änderung wird ignoriert."
+#MSG_FILES_CHANGE_DURING_BACKUP=49
+#MSG_EN[$MSG_FILES_CHANGE_DURING_BACKUP]="RBK0049W: Some files were changed or vanished during backup. RC %1 - ignoring change."
+#MSG_DE[$MSG_FILES_CHANGE_DURING_BACKUP]="RBK0049W: Einige Dateien haben sich während des Backups geändert oder sind verschwunden. RC %1 - Änderung wird ignoriert."
 MSG_RESTORING_FILE=50
 MSG_EN[$MSG_RESTORING_FILE]="RBK0050I: Restoring backup from %1."
 MSG_DE[$MSG_RESTORING_FILE]="RBK0050I: Backup wird von %1 zurückgespielt."
@@ -2920,11 +2920,6 @@ function tarBackup() {
 
 	(( $PARTITIONBASED_BACKUP )) && popd &>>$LOG_FILE
 
-	if [[ $rc -eq 1 ]]; then		# some files changed during backup or vanished during backup
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILES_CHANGE_DURING_BACKUP $rc
-		rc=0
-	fi
-
 	logExit  "tarBackup $rc"
 
 	return $rc
@@ -3009,13 +3004,8 @@ function rsyncBackup() { # partition number (for partition based backup)
 		executeCommand "$fakecmd"
 		rc=0
 	elif (( ! $FAKE )); then
-		executeCommand "$cmd" 23 24
+		executeCommand "$cmd"
 		rc=$?
-	fi
-
-	if [[ $rc -eq 23 || $rc -eq 24 ]]; then		# some files changed during backup or vanished during backup
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILES_CHANGE_DURING_BACKUP $rc
-		rc=0
 	fi
 
 	logExit  "rsyncBackup $rc"
@@ -3236,7 +3226,7 @@ function restore() {
 					if (( $PROGRESS )); then
 						cmd="pv -f $ROOT_RESTOREFILE | tar --exclude /boot ${archiveFlags} ${EXTENDED_TAR_OPTIONS} -x${verbose}${zip}f -"
 					else
-						cmd="tar --exclude /boot ${archiveFlags} -x${verbose}${zip}f ${EXTENDED_TAR_OPTIONS} \"$ROOT_RESTOREFILE\""
+						cmd="tar --exclude /boot ${archiveFlags} ${EXTENDED_TAR_OPTIONS} -x${verbose}${zip}f \"$ROOT_RESTOREFILE\""
 					fi
 					executeCommand "$cmd"
 					rc=$?
@@ -5333,13 +5323,15 @@ if [[ $BACKUPTYPE == $BACKUPTYPE_TAR || $BACKUPTYPE == $BACKUPTYPE_TGZ ]]; then
 		exitError $RC_PARAMETER_ERROR
 	fi
 
+	logItem "tar version$NL$(dpkg -p tar)"
+
 	if [[ -f /etc/os-release ]]; then
-		debian_release=$(cat /etc/os-release | grep VERSION_ID | cut -f 2 -d "=" | sed 's/"//g')
-		debian_id_like=$(cat /etc/os-release | grep ID_LIKE | cut -f 2 -d "=")
+		debian_version_id=$(cat /etc/os-release | grep -i ^VERSION_ID | cut -f 2 -d "=" | sed 's/"//g')
+		debian_id=$(cat /etc/os-release | grep -i ^ID= | cut -f 2 -d "=")
 		# enable extended tar options for raspbian Jessie and beyond
-		if (( ! $EXTENDED_TAR )) && [[ -n $debian_release && -n $debian_id_like ]]; then
-			debian_release=$(egrep -o "^[0-9]+" <<< $debian_release)
-			if (( debian_release > 7 )) || [[ $debian_id_like == "raspbian" ]]; then
+		if (( ! $EXTENDED_TAR )) && [[ -n $debian_version_id && -n $debian_id ]]; then
+			debian_release=$(egrep -o "^[0-9]+" <<< $debian_version_id)
+			if (( debian_version_id > 7 )) || [[ $debian_id == "raspbian" ]]; then
 				logItem "Enabling extended tar handling"
 				EXTENDED_TAR=1
 			fi
