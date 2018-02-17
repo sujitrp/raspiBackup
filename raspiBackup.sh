@@ -38,11 +38,13 @@ VERSION="0.6.3.2-beta"	# -beta or -hotfix suffixes possible
 DEFAULT_PATHES="/usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin"
 
 if [[ -e /bin/grep ]]; then
-   for p in $DEFAULT_PATHES; do
-      if ! /bin/grep -E -q "[^:]$p[:$]" <<< $PATH; then
-         [[ -z $PATH ]] && export PATH=$p || export PATH="$p:$PATH"
-      fi
-   done
+	pathElements=(${PATH//:/ })
+	for p in $DEFAULT_PATHES; do
+		if [[ ! " ${pathElements[@]} " =~ " ${p} " ]]; then
+			[[ -z $PATH ]] && PATH=$p || PATH="$p:$PATH"
+		fi
+	done
+	export PATH="$PATH"
 fi
 
 grep -iq beta <<< "$VERSION"
@@ -54,11 +56,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 MYPID=$$
 
-GIT_DATE="$Date: 2018-02-04 19:33:09 +0100$"
+GIT_DATE="$Date: 2018-02-17 12:51:02 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 4c829d2$"
+GIT_COMMIT="$Sha1: 0b4016d$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -91,8 +93,10 @@ LOG_DEBUG=1
 declare -A LOG_LEVELs=( [$LOG_NONE]="Off" [$LOG_DEBUG]="Debug" )
 POSSIBLE_LOG_LEVELs=""
 for K in "${!LOG_LEVELs[@]}"; do
-	[[ -z $POSSIBLE_LOG_LEVELs ]] && POSSIBLE_LOG_LEVELs="${LOG_LEVELs[$K]}" || POSSIBLE_LOG_LEVELs="$POSSIBLE_LOG_LEVELs | ${LOG_LEVELs[$K]}"
+	POSSIBLE_LOG_LEVELs="$POSSIBLE_LOG_LEVELs | ${LOG_LEVELs[$K]}"
 done
+POSSIBLE_LOG_LEVELs=$(cut -c 3- <<< $POSSIBLE_LOG_LEVELs)
+
 declare -A LOG_LEVEL_ARGs
 for K in "${!LOG_LEVELs[@]}"; do
 	k=$(tr '[:lower:]' '[:upper:]' <<< "${LOG_LEVELs[$K]}")
@@ -104,8 +108,10 @@ MSG_LEVEL_DETAILED=1
 declare -A MSG_LEVELs=( [$MSG_LEVEL_MINIMAL]="Minimal" [$MSG_LEVEL_DETAILED]="Detailed")
 POSSIBLE_MSG_LEVELs=""
 for K in "${!MSG_LEVELs[@]}"; do
-	[[ -z $POSSIBLE_MSG_LEVELs ]] && POSSIBLE_MSG_LEVELs="${MSG_LEVELs[$K]}" || POSSIBLE_MSG_LEVELs="$POSSIBLE_MSG_LEVELs | ${MSG_LEVELs[$K]}"
+	POSSIBLE_MSG_LEVELs="$POSSIBLE_MSG_LEVELs | ${MSG_LEVELs[$K]}"
 done
+POSSIBLE_MSG_LEVELs=$(cut -c 3- <<< $POSSIBLE_MSG_LEVELs)
+
 declare -A MSG_LEVEL_ARGs
 for K in "${!MSG_LEVELs[@]}"; do
 	k=$(tr '[:lower:]' '[:upper:]' <<< "${MSG_LEVELs[$K]}")
@@ -824,6 +830,9 @@ MSG_DE[$MSG_UPDATE_ABORTED]="RBK0189I: Versionsupgrade abgebrochen."
 MSG_UPDATE_TO_VERSION=190
 MSG_EN[$MSG_UPDATE_TO_VERSION]="RBK0190I: Upgrading $MYSELF from version %1 to %2."
 MSG_DE[$MSG_UPDATE_TO_VERSION]="RBK0190I: Es wird $MYSELF von Version %1 auf Version %2 upgraded."
+MSG_ADJUSTING_DISABLED=191
+MSG_EN[$MSG_ADJUSTING_DISABLED]="RBK0191E: Target %1 with %2 is smaller than backup source with %3. root partition resizing is disabled."
+MSG_DE[$MSG_ADJUSTING_DISABLED]="RBK0191E: Ziel %1 mit %2 ist kleiner als die Backupquelle mit %3. Verkleinern der root Partition ist ausgeschaltet."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -1224,6 +1233,7 @@ function logOptions() {
 	logItem "EXTENDED_TAR=$EXTENDED_TAR"
 	logItem "VERBOSE=$VERBOSE"
 	logItem "ZIP_BACKUP=$ZIP_BACKUP"
+	logItem "RESIZE_ROOTFS=$RESIZE_ROOTFS"
 
 }
 
@@ -1321,6 +1331,9 @@ DEFAULT_USE_UUID=1
 
 # Check for back blocks when formating restore device (Will take a long time)
 DEFAULT_CHECK_FOR_BAD_BLOCKS=0
+
+# Resize root filesystem during restore
+DEFAULT_RESIZE_ROOTFS=1
 
 ############# End default config section #############
 
@@ -2866,11 +2879,9 @@ function tarBackup() {
 
 	if (( $PARTITIONBASED_BACKUP )); then
 		partition="${BOOT_PARTITION_PREFIX}$1"
-
 		source="."
 		sourceDir="$TEMPORARY_MOUNTPOINT_ROOT/$partition"
 		target="\"${BACKUPTARGET_DIR}/$partition${FILE_EXTENSION[$BACKUPTYPE]}\""
-
 	else
 		bootPartitionBackup
 		source="/"
@@ -2894,14 +2905,14 @@ function tarBackup() {
 		--one-file-system \
 		--warning=no-xdev \
 		--numeric-owner \
-		--exclude=\"$BACKUPPATH_PARAMETER\" \
-		--exclude=proc/* \
-		--exclude=lost+found/* \
-		--exclude=sys/* \
-		--exclude=dev/* \
-		--exclude=tmp/* \
-		--exclude=boot/* \
-		--exclude=run/* \
+		--exclude=\"$BACKUPPATH_PARAMETER/*\" \
+		--exclude=proc \
+		--exclude=lost+found \
+		--exclude=sys \
+		--exclude=dev \
+		--exclude=tmp \
+		--exclude=boot \
+		--exclude=run \
 		$EXCLUDE_LIST \
 		$source"
 
@@ -3102,7 +3113,7 @@ function restore() {
 					writeToConsole $MSG_LEVEL_DETAILED $MSG_CREATING_PARTITIONS "$RESTORE_DEVICE"
 				fi
 
-				if (( ! $ROOT_PARTITION_DEFINED )); then
+				if (( ! $ROOT_PARTITION_DEFINED )) && (( $RESIZE_ROOTFS )); then
 					local sourceSDSize=$(calcSumSizeFromSFDISK "$SF_FILE")
 					local targetSDSize=$(blockdev --getsize64 $RESTORE_DEVICE)
 
@@ -3736,8 +3747,8 @@ function getRootPartition() {
 
 	local cmdline=$(cat /proc/cmdline)
 	logItem "cat /proc/cmdline$NL$(cat /proc/cmdline)"
-	if [[ $cmdline =~ .*root=([^ ]+) ]]; then
-		ROOT_PARTITION=${BASH_REMATCH[1]}
+	if [[ $cmdline =~ .*(imgpart|root)=([^ ]+) ]]; then
+		ROOT_PARTITION=${BASH_REMATCH[2]}
 		logItem "RootPartition: $ROOT_PARTITION"
 	else
 		assertionFailed $LINENO "Unable to find root mountpoint in /proc/cmdline"
@@ -4666,6 +4677,7 @@ function restorePartitionBasedPartition() { # restorefile
 					pushd "$MNT_POINT" &>>"$LOG_FILE"
 					[[ $BACKUPTYPE == $BACKUPTYPE_TGZ ]] && zip="z" || zip=""
 					cmd="tar ${archiveFlags} ${EXTENDED_TAR_OPTIONS} -x${verbose}${zip}f \"$restoreFile\""
+
 					if (( $PROGRESS )); then
 						cmd="$pv -f $restoreFile | $cmd -"
 					fi
@@ -4859,9 +4871,16 @@ function doitRestore() {
 		if (( ! $FORCE_SFDISK && ! $SKIP_SFDISK )); then
 			if (( sourceSDSize != targetSDSize )); then
 				if (( sourceSDSize > targetSDSize )); then
-					writeToConsole $MSG_LEVEL_MINIMAL $MSG_ADJUSTING_WARNING "$RESTORE_DEVICE" "$(bytesToHuman $targetSDSize)" "$(bytesToHuman $sourceSDSize)"
+					if (( $RESIZE_ROOTFS )); then
+						writeToConsole $MSG_LEVEL_MINIMAL $MSG_ADJUSTING_WARNING "$RESTORE_DEVICE" "$(bytesToHuman $targetSDSize)" "$(bytesToHuman $sourceSDSize)"
+					else
+						writeToConsole $MSG_LEVEL_MINIMAL $MSG_ADJUSTING_DISABLED "$RESTORE_DEVICE" "$(bytesToHuman $targetSDSize)" "$(bytesToHuman $sourceSDSize)"
+						exitError RC_PARAMETER_ERROR
+					fi
 				else
-					writeToConsole $MSG_LEVEL_MINIMAL $MSG_ADJUSTING_WARNING2 "$RESTORE_DEVICE" "$(bytesToHuman $targetSDSize)" "$(bytesToHuman $sourceSDSize)"
+					if (( $RESIZE_ROOTFS )); then
+						writeToConsole $MSG_LEVEL_MINIMAL $MSG_ADJUSTING_WARNING2 "$RESTORE_DEVICE" "$(bytesToHuman $targetSDSize)" "$(bytesToHuman $sourceSDSize)"
+					fi
 				fi
 			fi
 		fi
@@ -5042,6 +5061,7 @@ function usageEN() {
 	echo "-C Formating of the restorepartitions will check for badblocks (Standard: $DEFAULT_CHECK_FOR_BAD_BLOCKS)"
 	echo "-d {restoreDevice} (default: $DEFAULT_RESTORE_DEVICE) (Example: /dev/sda)"
 	echo "-R {rootPartition} (default: restoreDevice) (Example: /dev/sdb1)"
+	echo "--noResizeRootFS or --resizeRootFS (Default: ${NO_YES[$DEFAULT_RESIZE_ROOTFS]})"
 }
 
 function usageDE() {
@@ -5090,10 +5110,24 @@ function usageDE() {
 	echo "-C Beim Formatieren der Restorepartitionen wird auf Badblocks geprüft (Standard: $DEFAULT_CHECK_FOR_BAD_BLOCKS)"
 	echo "-d {restoreGerät} (Standard: $DEFAULT_RESTORE_DEVICE) (Beispiel: /dev/sda)"
 	echo "-R {rootPartition} (Standard: restoreDevice) (Beispiel: /dev/sdb1)"
+	echo "--noResizeRootFS oder --resizeRootFS (Standard: ${NO_YES[$DEFAULT_RESIZE_ROOTFS]})"
 }
 
 function mentionHelp() {
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_MENTION_HELP $MYSELF
+}
+
+# -x and -x+ enable, -x- disables flag
+# 0 -> disable, 1 -> enable
+function getEnableDisableOption() { # option
+	case "$1" in
+		-*-) echo 0;;
+		-*+|-*) echo 1;;
+		*) writeToConsole $MSG_LEVEL_MINIMAL $MSG_UNKNOWN_OPTION "$1"
+			mentionHelp
+			exitError $RC_PARAMETER_ERROR
+			;;
+	esac
 }
 
 ##### Now do your job
@@ -5149,6 +5183,7 @@ HANDLE_DEPRECATED=$DEFAULT_HANDLE_DEPRECATED
 USE_UUID=$DEFAULT_USE_UUID
 TAR_BOOT_PARTITION_ENABLED=$DEFAULT_TAR_BOOT_PARTITION_ENABLED
 CHECK_FOR_BAD_BLOCKS=$DEFAULT_CHECK_FOR_BAD_BLOCKS
+RESIZE_ROOTFS=$DEFAULT_RESIZE_ROOTFS
 
 if [[ -z $DEFAULT_LANGUAGE ]]; then
 	LANG_EXT=${LANG^^*}
@@ -5184,133 +5219,248 @@ SKIP_SFDISK=0
 UPDATE_MYSELF=0
 EXTENDED_TAR=0
 
-while getopts ":0159a:Ab:BcCd:D:e:E:FgG:hik:l:L:m:M:nN:o:p:Pr:R:s:St:T:u:UvVxX:yYzZ" opt; do
+PARAMS=""
 
-   case $opt in
-		0)	SKIP_SFDISK=1
-			;;
-		1)	FORCE_SFDISK=1
-			;;
-		5)  SKIP_RSYNC_CHECK=1
-			;;
-		9)	FAKE_BACKUPS=1
-			;;
-		a) 	STARTSERVICES="$OPTARG"
-			;;
-		A) 	APPEND_LOG=1
-			;;
-		b)	DD_BLOCKSIZE="$OPTARG"
-			;;
-		B)	TAR_BOOT_PARTITION_ENABLED=1
-			;;
-		c)  SKIPLOCALCHECK=$(( ! $SKIPLOCALCHECK ))
-			;;
-		C) 	CHECK_FOR_BAD_BLOCKS=1
-			;;
-		d) 	RESTORE_DEVICE="$OPTARG"
-			RESTORE=1
-			;;
-		D)	DD_PARMS="$OPTARG"
-			;;
-		e)	EMAIL="$OPTARG"
-			;;
-		E)	EMAIL_PARMS="$OPTARG"
-			;;
-		F) 	FAKE=1
-			;;
-		g)	PROGRESS=1
-			;;
-		G)	LANGUAGE="$OPTARG"
-			LANGUAGE=${LANGUAGE^^*}
-			msgVar="MSG_${LANGUAGE}"
-			if [[ -z ${!msgVar} ]]; then
-				writeToConsole $MSG_LEVEL_MINIMAL $MSG_LANGUAGE_NOT_SUPPORTED $LANGUAGE
-				exitError $RC_PARAMETER_ERROR
-			fi
-			;;
-		i)  if (( ! $IS_BETA )); then
-				USE_UUID=$(( ! $USE_UUID ))
-			fi
-			;;
-		k) 	KEEPBACKUPS="$OPTARG"
-			;;
-		l) 	LOG_LEVEL="$OPTARG"
-			;;
-		L) 	LOG_OUTPUT="$OPTARG"
-			;;
-		m) 	MSG_LEVEL="$OPTARG"
-			;;
-		M)	BACKUP_DIRECTORY_NAME="$OPTARG"
-			BACKUP_DIRECTORY_NAME=${BACKUP_DIRECTORY_NAME//[ \/\:\.\-]/_}
-			;;
-		n)  NOTIFY_UPDATE=$(( ! $NOTIFY_UPDATE ))
-			;;
-		N)  EXTENSIONS="$OPTARG"
-			;;
-		o) 	STOPSERVICES="$OPTARG"
-			;;
-       	p) 	if [[ ! -d "$OPTARG" ]]; then
-		        writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$OPTARG"
-        		exitError $RC_MISSING_FILES
-	       	fi
-            BACKUPPATH="$(readlink -f "$OPTARG")"
-			;;
-		P) 	PARTITIONBASED_BACKUP=$(( ! $PARTITIONBASED_BACKUP ))
-			;;
-		r) 	if [[ ! -d "$OPTARG" && ! -f "$OPTARG" ]]; then
-				writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$OPTARG"
-				exitError $RC_MISSING_FILES
-			fi
-			RESTOREFILE="$(readlink -f "$OPTARG")"
-			;;
-		R) 	ROOT_PARTITION_DEFINED=1
-			ROOT_PARTITION="$OPTARG"
-			;;
-		s)	EMAIL_PROGRAM="$OPTARG"
-			;;
-		S)	FORCE_UPDATE=1
-			;;
-		t) 	BACKUPTYPE="$OPTARG"
-			;;
-		T)	if [[ "$OPTARG" == "$PARTITIONS_TO_BACKUP_ALL" ]]; then
-				PARTITIONS_TO_BACKUP=("$OPTARG")
-			else
-				PARTITIONS_TO_BACKUP=($OPTARG)
-			fi
-			;;
-		u)	EXCLUDE_LIST="$OPTARG"
-			;;
-		U)	UPDATE_MYSELF=1
-			;;
-		v)	VERBOSE=$(( ! $VERBOSE ))
-			;;
-		V)	REVERT=1
-			;;
-		x)	EXCLUDE_DD=1
-			;;
-		X)	EXTENDED_TAR=$OPTARG
-			;;
-		y)	DEPLOY=1
-			;;
-		Y)	NO_YES_QUESTION=1
-			;;
-		z)	ZIP_BACKUP=$(( ! $ZIP_BACKUP ))
-			;;
-		Z)	REGRESSION_TEST=1
-			;;
-		h)  HELP=1
-			;;
-		\?)	writeToConsole $MSG_LEVEL_MINIMAL $MSG_UNKNOWN_OPTION "-$OPTARG"
-			mentionHelp
-			exitError $RC_PARAMETER_ERROR
-			;;
-		:) 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_OPTION_REQUIRES_PARAMETER "-$OPTARG"
-			mentionHelp
-			exitError $RC_PARAMETER_ERROR
-			;;
-    esac
+while (( "$#" )); do
+
+  case "$1" in
+    -0|-0[-+])
+	  SKIP_SFDISK=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -1|-1[-+])
+	  FORCE_SFDISK=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -5|-5[-+])
+	  SKIP_RSYNC_CHECK=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -9|-9[-+])
+	  FAKE_BACKUPS=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -a)
+      STARTSERVICES="$2"; shift 2
+      ;;
+
+    -A|-A[-+])
+	  APPEND_LOG=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -b)
+      DD_BLOCKSIZE="$2"; shift 2
+      ;;
+
+    -B|-B[-+])
+	  TAR_BOOT_PARTITION_ENABLED=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -c|-c[-+])
+	  SKIPLOCALCHECK=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -C|-C[-+])
+	  CHECK_FOR_BAD_BLOCKS=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -d)
+      RESTORE_DEVICE="$2"; RESTORE=1; shift 2
+      ;;
+
+    -D)
+      DD_PARMS="$2"; shift 2
+      ;;
+
+    -e)
+      EMAIL="$2"; shift 2
+      ;;
+
+    -E)
+      EMAIL_PARMS="$2"; shift 2
+      ;;
+
+    -F|-F[-+])
+	  FAKE=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -g|-g[-+])
+	  PROGRESS=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -G)
+      LANGUAGE="$2"; shift 2
+  	  LANGUAGE=${LANGUAGE^^*}
+	  msgVar="MSG_${LANGUAGE}"
+	  if [[ -z ${!msgVar} ]]; then
+		  writeToConsole $MSG_LEVEL_MINIMAL $MSG_LANGUAGE_NOT_SUPPORTED $LANGUAGE
+		  exitError $RC_PARAMETER_ERROR
+	  fi
+	  ;;
+
+	-h)
+	  HELP=1; break
+	  ;;
+
+    -i|-i[-+])
+	  USE_UUID=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -k)
+	  KEEPBACKUPS="$2"; shift 2
+	  ;;
+
+    -l)
+	  LOG_LEVEL="$2"; shift 2
+	  ;;
+
+    -L)
+	  LOG_OUTPUT="$2"; shift 2
+	  ;;
+
+    -m)
+	  MSG_LEVEL="$2"; shift 2
+	  ;;
+
+    -M)
+	  BACKUP_DIRECTORY_NAME="$2"; shift 2
+  	  BACKUP_DIRECTORY_NAME=${BACKUP_DIRECTORY_NAME//[ \/\:\.\-]/_}
+  	  ;;
+
+    -n|-n[-+])
+	  NOTIFY_UPDATE=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -N)
+	  EXTENSIONS="$2"; shift 2
+	  ;;
+
+    -o)
+	  STOPSERVICES="$2"; shift 2
+	  ;;
+
+    -p)
+	  BACKUPPATH="$2"; shift 2
+	  if [[ ! -d "$BACKUPPATH" ]]; then
+	      writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$BACKUPPATH"
+          exitError $RC_MISSING_FILES
+	  fi
+      BACKUPPATH="$(readlink -f "$BACKUPPATH")"
+	  ;;
+
+    -P|-P[-+])
+	  PARTITIONBASED_BACKUP=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -r)
+	  RESTOREFILE="$2"; shift 2
+      if [[ ! -d "$RESTOREFILE" && ! -f "$RESTOREFILE" ]]; then
+		  writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$RESTOREFILE"
+		  exitError $RC_MISSING_FILES
+	  fi
+	  RESTOREFILE="$(readlink -f "$OPTARG")"
+	  ;;
+
+    -R)
+	  ROOT_PARTITION="$2"; shift 2
+      ROOT_PARTITION_DEFINED=1
+  	  ;;
+
+	--resizeRootFS|--noResizeRootFS)
+	  RESIZE_ROOTFS=1
+	  [[ $1 == --no* ]] && RESIZE_ROOTFS=0
+	  shift 1
+
+	  echo $RESIZE_ROOTFS
+	  exit
+	  ;;
+
+    -s)
+	  EMAIL_PROGRAM="$2"; shift 2
+	  ;;
+
+    -S|-S[-+])
+	  FORCE_UPDATE=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -t)
+	  BACKUPTYPE="$2"; shift 2
+	  ;;
+
+    -T)
+	  PARTITIONS_TO_BACKUP="$2"; shift 2
+	  if [[ "$PARTITIONS_TO_BACKUP" == "$PARTITIONS_TO_BACKUP_ALL" ]]; then
+		  PARTITIONS_TO_BACKUP=("$PARTITIONS_TO_BACKUP")
+	  else
+		  PARTITIONS_TO_BACKUP=($PARTITIONS_TO_BACKUP)
+	  fi
+	  ;;
+
+    -u)
+	  EXCLUDE_LIST="$2"; shift 2
+	  ;;
+
+    -U)
+	  UPDATE_MYSELF=1; shift 1
+	  ;;
+
+    -v|-v[-+])
+	  VERBOSE=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+	 --version)
+	  echo "Version: $VERSION CommitSHA: $GIT_COMMIT_ONLY CommitDate: $GIT_DATE_ONLY CommitTime: $GIT_TIME_ONLY"
+	  exitNormal
+	  ;;
+
+    -V)
+	  REVERT=1
+	  ;;
+
+    -x|-x[-+])
+	  EXCLUDE_DD=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -X|-X[-+])
+	  EXTENDED_TAR=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -y|-y[-+])
+	  DEPLOY=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -Y)
+	  NO_YES_QUESTION=1; shift 1
+	  ;;
+
+    -z|-z[-+])
+	  ZIP_BACKUP=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    -Z|-Z[-+])
+	  REGRESSION_TEST=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
+    --) # end argument parsing
+      shift
+      break
+      ;;
+
+    -*|--*|+*|++*) # unknown option
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_UNKNOWN_OPTION "$1"
+		mentionHelp
+		exitError $RC_PARAMETER_ERROR
+      ;;
+
+    *) # preserve positional arguments
+      [[ -z $PARAMS ]] && PARAMS="$1" || PARAMS="$PARAMS $1"
+      shift
+      ;;
+  esac
 done
-shift $((OPTIND-1))
+
+# set positional arguments in argument list $@
+set -- $PARAMS
 
 writeToConsole $MSG_LEVEL_MINIMAL $MSG_STARTED "$HOSTNAME" "$MYSELF" "$VERSION" "$(date)" "$GIT_COMMIT_ONLY"
 (( $IS_BETA )) && writeToConsole $MSG_LEVEL_MINIMAL $MSG_INTRO_BETA_MESSAGE
@@ -5384,7 +5534,7 @@ if (( $UPDATE_MYSELF )); then
 	exitNormal
 fi
 
-if (( $NO_YES_QUESTION )); then				# dangerous option
+if (( $NO_YES_QUESTION )); then				# WARNING: dangerous option !!!
 	if [[ ! $RESTORE_DEVICE =~ "$YES_NO_RESTORE_DEVICE" ]]; then	# make sure we're not killing a disk by accident
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_YES_NO_DEVICE_MISMATCH $RESTORE_DEVICE $YES_NO_RESTORE_DEVICE
 		exitError $RC_MISC_ERROR
@@ -5442,5 +5592,3 @@ fi
 
 doit #	no return for backup
 exit $rc
-
-# vim: set expandtab tabstop=8 shiftwidth=8 autoindent smartindent
