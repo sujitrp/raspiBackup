@@ -56,11 +56,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 MYPID=$$
 
-GIT_DATE="$Date: 2018-02-17 12:51:02 +0100$"
+GIT_DATE="$Date: 2018-02-20 22:09:17 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 0b4016d$"
+GIT_COMMIT="$Sha1: 66b88bd$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -5118,6 +5118,7 @@ function mentionHelp() {
 }
 
 # -x and -x+ enable, -x- disables flag
+# --opt and --opt+ enable, --opt- disables flag
 # 0 -> disable, 1 -> enable
 function getEnableDisableOption() { # option
 	case "$1" in
@@ -5366,13 +5367,8 @@ while (( "$#" )); do
       ROOT_PARTITION_DEFINED=1
   	  ;;
 
-	--resizeRootFS|--noResizeRootFS)
-	  RESIZE_ROOTFS=1
-	  [[ $1 == --no* ]] && RESIZE_ROOTFS=0
-	  shift 1
-
-	  echo $RESIZE_ROOTFS
-	  exit
+	--resizeRootFS|--resizeRootFS[+-])
+	  RESIZE_ROOTFS=$(getEnableDisableOption "$1"); shift 1
 	  ;;
 
     -s)
