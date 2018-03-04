@@ -56,11 +56,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 MYPID=$$
 
-GIT_DATE="$Date: 2018-02-20 22:09:17 +0100$"
+GIT_DATE="$Date: 2018-02-21 19:17:52 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 66b88bd$"
+GIT_COMMIT="$Sha1: 7f9d77a$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -5471,7 +5471,9 @@ if [[ $BACKUPTYPE == $BACKUPTYPE_TAR || $BACKUPTYPE == $BACKUPTYPE_TGZ ]]; then
 
 	logItem "tar version$NL$(dpkg -p tar)"
 
-	if [[ -f /etc/os-release ]]; then
+	if (( $REGRESSION_TEST )); then
+		EXTENDED_TAR=1					# regressiontests executed with jessie
+	elif [[ -f /etc/os-release ]]; then
 		debian_version_id=$(cat /etc/os-release | grep -i ^VERSION_ID | cut -f 2 -d "=" | sed 's/"//g')
 		debian_id=$(cat /etc/os-release | grep -i ^ID= | cut -f 2 -d "=")
 		# enable extended tar options for raspbian Jessie and beyond
