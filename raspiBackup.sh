@@ -56,11 +56,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 MYPID=$$
 
-GIT_DATE="$Date: 2018-02-21 19:17:52 +0100$"
+GIT_DATE="$Date: 2018-03-07 20:10:59 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 7f9d77a$"
+GIT_COMMIT="$Sha1: d510ba1$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -783,14 +783,11 @@ MSG_SCRIPT_UPDATE_NOT_REQUIRED=175
 MSG_EN[$MSG_SCRIPT_UPDATE_NOT_REQUIRED]="RBK0175I: %1 version %2 is newer than version %3."
 MSG_DE[$MSG_SCRIPT_UPDATE_NOT_REQUIRED]="RBK0175I: %1 Version %2 ist aktueller als Version %3."
 MSG_INVALID_PARAMETER=176
-MSG_EN[$MSG_INVALID_PARAMETER]="RBK0175E: Invalid parameter %1 for option %2."
-MSG_DE[$MSG_INVALID_PARAMETER]="RBK0175E: Ungültiger Parameter %1 für Option %2."
+MSG_EN[$MSG_INVALID_PARAMETER]="RBK0176E: Invalid parameter %1 for option %2."
+MSG_DE[$MSG_INVALID_PARAMETER]="RBK0176E: Ungültiger Parameter %1 für Option %2."
 MSG_TAR_EXT_OPT_SAVE=177
-MSG_EN[$MSG_TAR_EXT_OPT_SAVE]="RBK0176I: Saving extended attributes and acls with tar"
-MSG_DE[$MSG_TAR_EXT_OPT_SAVE]="RBK0176I: Extended Attribute und ACLs werden mit tar gesichert"
-MSG_TAR_EXT_OPT_RESTORE=178
-MSG_EN[$MSG_TAR_EXT_OPT_RESTORE]="RBK0177I: Restoring extended attributes and acls with tar"
-MSG_DE[$MSG_TAR_EXT_OPT_RESTORE]="RBK0177I: Extended Attribute und ACLs werden mit tar zurückgesichert"
+MSG_EN[$MSG_TAR_EXT_OPT_SAVE]="RBK0177I: Saving extended attributes and acls with tar"
+MSG_DE[$MSG_TAR_EXT_OPT_SAVE]="RBK0177I: Extended Attribute und ACLs werden mit tar gesichert"
 MSG_IMG_BOOT_BACKUP_FAILED=178
 MSG_EN[$MSG_IMG_BOOT_BACKUP_FAILED]="RBK0178E: Creation of %1 failed with RC %2."
 MSG_DE[$MSG_IMG_BOOT_BACKUP_FAILED]="RBK0178E: Erzeugung von %1 Datei endet fehlerhaft mit RC %2."
@@ -833,6 +830,9 @@ MSG_DE[$MSG_UPDATE_TO_VERSION]="RBK0190I: Es wird $MYSELF von Version %1 auf Ver
 MSG_ADJUSTING_DISABLED=191
 MSG_EN[$MSG_ADJUSTING_DISABLED]="RBK0191E: Target %1 with %2 is smaller than backup source with %3. root partition resizing is disabled."
 MSG_DE[$MSG_ADJUSTING_DISABLED]="RBK0191E: Ziel %1 mit %2 ist kleiner als die Backupquelle mit %3. Verkleinern der root Partition ist ausgeschaltet."
+MSG_TAR_EXT_OPT_RESTORE=191
+MSG_EN[$MSG_TAR_EXT_OPT_RESTORE]="RBK0191I: Restoring extended attributes and acls with tar"
+MSG_DE[$MSG_TAR_EXT_OPT_RESTORE]="RBK0191I: Extended Attribute und ACLs werden mit tar zurückgesichert"
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -4665,15 +4665,17 @@ function restorePartitionBasedPartition() { # restorefile
 
 				$BACKUPTYPE_TAR|$BACKUPTYPE_TGZ)
 					local archiveFlags=""
-					if (( $EXTENDED_TAR )); then
-						EXTENDED_TAR_OPTIONS="--xattrs --acls"
-						writeToConsole $MSG_LEVEL_DETAILED $MSG_TAR_EXT_OPT_RESTORE
-					fi
 
 					if [[ -n $fatSize  ]]; then
 						local archiveFlags="--same-owner --same-permissions --numeric-owner ${TAR_RESTORE_ADDITIONAL_OPTIONS}"	# fat32 doesn't know about this
 						EXTENDED_TAR_OPTIONS=""
+					else
+						if (( $EXTENDED_TAR )); then
+							EXTENDED_TAR_OPTIONS="--xattrs --acls"
+							writeToConsole $MSG_LEVEL_DETAILED $MSG_TAR_EXT_OPT_RESTORE
+						fi
 					fi
+
 					pushd "$MNT_POINT" &>>"$LOG_FILE"
 					[[ $BACKUPTYPE == $BACKUPTYPE_TGZ ]] && zip="z" || zip=""
 					cmd="tar ${archiveFlags} ${EXTENDED_TAR_OPTIONS} -x${verbose}${zip}f \"$restoreFile\""
@@ -5018,7 +5020,7 @@ function lockingFramework() {
 function usageEN() {
 
     echo "$GIT_CODEVERSION"
-    echo "usage: $MYSELF [option]* [backupDirectory | backupFile]"
+    echo "usage: $MYSELF [option]* {backupDirectory | backupFile}"
     echo ""
     echo "-General options-"
     echo "-A append logfile to eMail (default: ${NO_YES[$DEFAULT_APPEND_LOG]})"
@@ -5067,7 +5069,7 @@ function usageEN() {
 function usageDE() {
 
     echo "$GIT_CODEVERSION"
-    echo "Aufruf: $MYSELF [Option]* [Backupverzeichnis | BackupDatei]"
+    echo "Aufruf: $MYSELF [Option]* {Backupverzeichnis | BackupDatei}"
     echo ""
     echo "-Allgemeine Optionen-"
     echo "-A Logfile wird in eMail angehängt (Standard: ${NO_YES[$DEFAULT_APPEND_LOG]})"
@@ -5299,7 +5301,7 @@ while (( "$#" )); do
 	  fi
 	  ;;
 
-	-h)
+	-h|--help)
 	  HELP=1; break
 	  ;;
 
@@ -5500,7 +5502,7 @@ fi
 
 unusedParms="$@"
 
-if (( $HELP )); then
+if (( $HELP )) || [[ -z $fileParameter ]]; then
 	usage
 	exitNormal
 fi
