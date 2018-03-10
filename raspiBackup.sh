@@ -56,11 +56,11 @@ MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 MYPID=$$
 
-GIT_DATE="$Date: 2018-03-07 20:10:59 +0100$"
+GIT_DATE="$Date: 2018-03-10 14:25:50 +0100$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: d510ba1$"
+GIT_COMMIT="$Sha1: f4883ce$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -1001,7 +1001,7 @@ function getLocalizedMessage() { # messageNumber parm1 parm2
 # Write message
 
 function writeToConsole() {  # msglevel messagenumber message
-	local msg level
+	local msg level timestamp
 	(( $noNL )) && noNL="-n"
 
 	level=$1
@@ -1010,14 +1010,18 @@ function writeToConsole() {  # msglevel messagenumber message
 	if [[ ( $level -le $MSG_LEVEL ) ]]; then
 		msg="$(getMessageText $LANGUAGE "$@")"
 
-		if (( $INTERACTIVE )); then
-			echo $noNL -e "$msg" > /dev/tty
-		else
-			echo $noNL -e "$msg" >> "$LOG_FILE"
+		if (( $TIMESTAMPS )); then
+			timestamp=$(date +'%m-%d-%Y %T')
 		fi
 
-		echo $noNL -e "$msg" >> "$LOG_MAIL_FILE"
-		logIntoOutput $LOG_TYPE_MSG "$msg"
+		if (( $INTERACTIVE )); then
+			echo $noNL -e "$timestamp $msg" > /dev/tty
+		else
+			echo $noNL -e "$timestamp $msg" >> "$LOG_FILE"
+		fi
+
+		echo $noNL -e "$timestamp $msg" >> "$LOG_MAIL_FILE"
+		logIntoOutput $LOG_TYPE_MSG "$timestamp $msg"
 	fi
 	unset noNL
 }
@@ -1230,11 +1234,10 @@ function logOptions() {
 	logItem "TAR_BACKUP_OPTIONS=$TAR_BACKUP_OPTIONS"
 	logItem "TAR_BOOT_PARTITION_ENABLED=$TAR_BOOT_PARTITION_ENABLED"
 	logItem "TAR_RESTORE_ADDITIONAL_OPTIONS=$TAR_RESTORE_ADDITIONAL_OPTIONS"
-	logItem "EXTENDED_TAR=$EXTENDED_TAR"
 	logItem "VERBOSE=$VERBOSE"
 	logItem "ZIP_BACKUP=$ZIP_BACKUP"
 	logItem "RESIZE_ROOTFS=$RESIZE_ROOTFS"
-
+	logItem "TIMESTAMPS=$TIMESTAMPS"
 }
 
 LOG_MAIL_FILE="/tmp/${MYNAME}.maillog"
@@ -1316,9 +1319,6 @@ DEFAULT_RSYNC_BACKUP_ADDITIONAL_OPTIONS=""
 DEFAULT_TAR_BACKUP_OPTIONS="-cpi"
 DEFAULT_TAR_BACKUP_ADDITIONAL_OPTIONS=""
 DEFAULT_TAR_RESTORE_ADDITIONAL_OPTIONS=""
-# set to 1 if tar supports xattrs and acls
-# will be enabled by magic if raspbian and Jessie and beyond is used
-DEFAULT_EXTENDED_TAR=0
 
 # Use with care !
 DEFAULT_MAIL_ON_ERROR_ONLY=0
@@ -1334,6 +1334,9 @@ DEFAULT_CHECK_FOR_BAD_BLOCKS=0
 
 # Resize root filesystem during restore
 DEFAULT_RESIZE_ROOTFS=1
+
+# add timestamps in front of messages
+DEFAULT_TIMESTAMPS=0
 
 ############# End default config section #############
 
@@ -2273,7 +2276,7 @@ function cleanup() { # trap
 
 # 	borrowed from http://stackoverflow.com/questions/360201/kill-background-process-when-shell-script-exit
 
-	if (( $RESTORE )) && [[ $rc == $RC_NATIVE_BACKUP_FAILED ]]; then
+	if (( ! $RESTORE )) && [[ $rc == $RC_NATIVE_BACKUP_FAILED ]]; then
 		logItem "Terminate my subshells and myself $rc"
 		trap - SIGINT SIGTERM EXIT	# disable interupts
 		kill -s SIGINT 0
@@ -2890,15 +2893,9 @@ function tarBackup() {
 
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_MAIN_BACKUP_PROGRESSING $BACKUPTYPE "${target//\\/}"
 
-	if (( $EXTENDED_TAR )); then
-		EXTENDED_TAR_OPTIONS="--xattrs --acls" || EXTENDED_TAR_OPTIONS=""
-		writeToConsole $MSG_LEVEL_DETAILED $MSG_TAR_EXT_OPT_SAVE
-	fi
-
 	cmd="tar \
 		$TAR_BACKUP_OPTIONS \
 		$TAR_BACKUP_ADDITIONAL_OPTIONS \
-		$EXTENDED_TAR_OPTIONS \
 		${zip} \
 		${verbose} \
 		-f $target \
@@ -2906,13 +2903,13 @@ function tarBackup() {
 		--warning=no-xdev \
 		--numeric-owner \
 		--exclude=\"$BACKUPPATH_PARAMETER/*\" \
-		--exclude=proc \
-		--exclude=lost+found \
-		--exclude=sys \
-		--exclude=dev \
-		--exclude=tmp \
-		--exclude=boot \
-		--exclude=run \
+		--exclude=proc/* \
+		--exclude=lost+found/* \
+		--exclude=sys/* \
+		--exclude=dev/* \
+		--exclude=tmp/* \
+		--exclude=boot/* \
+		--exclude=run/* \
 		$EXCLUDE_LIST \
 		$source"
 
@@ -3227,17 +3224,13 @@ function restore() {
 
 				$BACKUPTYPE_TAR|$BACKUPTYPE_TGZ)
 					local archiveFlags="--same-owner --same-permissions --numeric-owner ${TAR_RESTORE_ADDITIONAL_OPTIONS}"
-					if (( $EXTENDED_TAR )); then
-						EXTENDED_TAR_OPTIONS="--xattrs --acls"
-						writeToConsole $MSG_LEVEL_DETAILED $MSG_TAR_EXT_OPT_SAVE
-					fi
 
 					pushd "$MNT_POINT" &>>"$LOG_FILE"
 					[[ $BACKUPTYPE == $BACKUPTYPE_TGZ ]] && zip="z" || zip=""
 					if (( $PROGRESS )); then
-						cmd="pv -f $ROOT_RESTOREFILE | tar --exclude /boot ${archiveFlags} ${EXTENDED_TAR_OPTIONS} -x${verbose}${zip}f -"
+						cmd="pv -f $ROOT_RESTOREFILE | tar --exclude /boot ${archiveFlags} -x${verbose}${zip}f -"
 					else
-						cmd="tar --exclude /boot ${archiveFlags} ${EXTENDED_TAR_OPTIONS} -x${verbose}${zip}f \"$ROOT_RESTOREFILE\""
+						cmd="tar --exclude /boot ${archiveFlags} -x${verbose}${zip}f \"$ROOT_RESTOREFILE\""
 					fi
 					executeCommand "$cmd"
 					rc=$?
@@ -4668,17 +4661,11 @@ function restorePartitionBasedPartition() { # restorefile
 
 					if [[ -n $fatSize  ]]; then
 						local archiveFlags="--same-owner --same-permissions --numeric-owner ${TAR_RESTORE_ADDITIONAL_OPTIONS}"	# fat32 doesn't know about this
-						EXTENDED_TAR_OPTIONS=""
-					else
-						if (( $EXTENDED_TAR )); then
-							EXTENDED_TAR_OPTIONS="--xattrs --acls"
-							writeToConsole $MSG_LEVEL_DETAILED $MSG_TAR_EXT_OPT_RESTORE
-						fi
 					fi
 
 					pushd "$MNT_POINT" &>>"$LOG_FILE"
 					[[ $BACKUPTYPE == $BACKUPTYPE_TGZ ]] && zip="z" || zip=""
-					cmd="tar ${archiveFlags} ${EXTENDED_TAR_OPTIONS} -x${verbose}${zip}f \"$restoreFile\""
+					cmd="tar ${archiveFlags} -x${verbose}${zip}f \"$restoreFile\""
 
 					if (( $PROGRESS )); then
 						cmd="$pv -f $restoreFile | $cmd -"
@@ -5044,7 +5031,6 @@ function usageEN() {
     echo "-U current script version will be replaced by the actual version. Current version will be saved and can be restored with parameter -V"
     echo "-v verbose output of backup tools (default: ${NO_YES[$DEFAULT_VERBOSE]})"
     echo "-V restore a previous version"
-    echo "-X extended attributes and ACLs are handled by tar (default: ${NO_YES[$DEFAULT_EXTENDED_TAR]})"
     echo "-z compress backup file with gzip (default: ${NO_YES[$DEFAULT_ZIP_BACKUP]})"
 	echo ""
     echo "-Backup options-"
@@ -5093,7 +5079,6 @@ function usageDE() {
     echo "-U Scriptversion wird durch die aktuelle Version ersetzt. Die momentane Version wird gesichert und kann mit dem Parameter -V wiederhergestellt werden"
     echo "-v Detailierte Ausgaben der Backup Tools (Standard: ${NO_YES[$DEFAULT_VERBOSE]})"
     echo "-V Aktivierung einer älteren Skriptversion"
-    echo "-X Extended attributes und ACLs werden von tar behandelt (Standard: ${NO_YES[$DEFAULT_EXTENDED_TAR]})"
     echo "-z Backup verkleinern mit gzip (Standard: ${NO_YES[$DEFAULT_ZIP_BACKUP]})"
 	echo ""
     echo "-Backup Optionen-"
@@ -5180,13 +5165,13 @@ RSYNC_BACKUP_ADDITIONAL_OPTIONS=$DEFAULT_RSYNC_BACKUP_ADDITIONAL_OPTIONS
 TAR_BACKUP_OPTIONS=$DEFAULT_TAR_BACKUP_OPTIONS
 TAR_BACKUP_ADDITIONAL_OPTIONS=$DEFAULT_TAR_BACKUP_ADDITIONAL_OPTIONS
 TAR_RESTORE_ADDITIONAL_OPTIONS=$DEFAULT_TAR_RESTORE_ADDITIONAL_OPTIONS
-EXTENDED_TAR=$DEFAULT_EXTENDED_TAR
 LINK_BOOTPARTITIONFILES=$DEFAULT_LINK_BOOTPARTITIONFILES
 HANDLE_DEPRECATED=$DEFAULT_HANDLE_DEPRECATED
 USE_UUID=$DEFAULT_USE_UUID
 TAR_BOOT_PARTITION_ENABLED=$DEFAULT_TAR_BOOT_PARTITION_ENABLED
 CHECK_FOR_BAD_BLOCKS=$DEFAULT_CHECK_FOR_BAD_BLOCKS
 RESIZE_ROOTFS=$DEFAULT_RESIZE_ROOTFS
+TIMESTAMPS=$DEFAULT_TIMESTAMPS
 
 if [[ -z $DEFAULT_LANGUAGE ]]; then
 	LANG_EXT=${LANG^^*}
@@ -5220,7 +5205,6 @@ ROOT_PARTITION_DEFINED=0
 SKIP_RSYNC_CHECK=0
 SKIP_SFDISK=0
 UPDATE_MYSELF=0
-EXTENDED_TAR=0
 
 PARAMS=""
 
@@ -5385,6 +5369,10 @@ while (( "$#" )); do
 	  BACKUPTYPE="$2"; shift 2
 	  ;;
 
+	--timestamps|--timestamps[+-])
+	  TIMESTAMPS=$(getEnableDisableOption "$1"); shift 1
+	  ;;
+
     -T)
 	  PARTITIONS_TO_BACKUP="$2"; shift 2
 	  if [[ "$PARTITIONS_TO_BACKUP" == "$PARTITIONS_TO_BACKUP_ALL" ]]; then
@@ -5417,10 +5405,6 @@ while (( "$#" )); do
 
     -x|-x[-+])
 	  EXCLUDE_DD=$(getEnableDisableOption "$1"); shift 1
-	  ;;
-
-    -X|-X[-+])
-	  EXTENDED_TAR=$(getEnableDisableOption "$1"); shift 1
 	  ;;
 
     -y|-y[-+])
@@ -5463,31 +5447,6 @@ set -- $PARAMS
 writeToConsole $MSG_LEVEL_MINIMAL $MSG_STARTED "$HOSTNAME" "$MYSELF" "$VERSION" "$(date)" "$GIT_COMMIT_ONLY"
 (( $IS_BETA )) && writeToConsole $MSG_LEVEL_MINIMAL $MSG_INTRO_BETA_MESSAGE
 (( $IS_HOTFIX )) && writeToConsole $MSG_LEVEL_MINIMAL $MSG_INTRO_HOTFIX_MESSAGE
-
-if [[ $BACKUPTYPE == $BACKUPTYPE_TAR || $BACKUPTYPE == $BACKUPTYPE_TGZ ]]; then
-
-	if [[ ! $EXTENDED_TAR =~ 0|1 ]]; then
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_INVALID_PARAMETER "$EXTENDED_TAR" "-X"
-		exitError $RC_PARAMETER_ERROR
-	fi
-
-	logItem "tar version$NL$(dpkg -p tar)"
-
-	if (( $REGRESSION_TEST )); then
-		EXTENDED_TAR=1					# regressiontests executed with jessie
-	elif [[ -f /etc/os-release ]]; then
-		debian_version_id=$(cat /etc/os-release | grep -i ^VERSION_ID | cut -f 2 -d "=" | sed 's/"//g')
-		debian_id=$(cat /etc/os-release | grep -i ^ID= | cut -f 2 -d "=")
-		# enable extended tar options for raspbian Jessie and beyond
-		if (( ! $EXTENDED_TAR )) && [[ -n $debian_version_id && -n $debian_id ]]; then
-			debian_release=$(egrep -o "^[0-9]+" <<< $debian_version_id)
-			if (( debian_version_id > 7 )) || [[ $debian_id == "raspbian" ]]; then
-				logItem "Enabling extended tar handling"
-				EXTENDED_TAR=1
-			fi
-		fi
-	fi
-fi
 
 fileParameter="$1"
 if [[ -n "$1" ]]; then
