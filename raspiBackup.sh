@@ -2094,7 +2094,7 @@ function setupEnvironment() {
 	elif [[ "$LOG_OUTPUT" == "$LOG_OUTPUT_SYSLOG" ]]; then
 		LOG_FILE="/var/log/syslog"
 	else
-		LOG_FILE=$LOG_OUTPUT
+		LOG_FILE="$LOG_OUTPUT"
 	fi
 
 	LOG_FILE_FINAL="$LOG_FILE"
