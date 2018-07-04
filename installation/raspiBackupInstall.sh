@@ -10,17 +10,18 @@
 
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
-VERSION="0.3.6.5"
+VERSION="0.3.8"
 
-MYHOMEURL="https://www.linux-tips-and-tricks.de"
+MYHOMEDOMAIN="www.linux-tips-and-tricks.de"
+MYHOMEURL="https://$MYHOMEDOMAIN"
 
 MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-set +u; GIT_DATE="$Date: 2018-01-04 21:06:54 +0100$"; set -u
+set +u; GIT_DATE="$Date: 2018-07-04 20:22:21 +0200$"; set -u
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-set +u; GIT_COMMIT="$Sha1: dbfcf04$"; set -u
+set +u; GIT_COMMIT="$Sha1: 67a63d3$"; set -u
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -31,16 +32,10 @@ RASPIBACKUP_NAME=${FILE_TO_INSTALL%.*}
 
 NL=$'\n'
 FILE_TO_INSTALL_BETA="raspiBackup_beta.sh"
-LOG_FILE="./$MYNAME.log"
-URL="www.linux-tips-and-tricks.de"
 declare -A CONFIG_DOWNLOAD_FILE=( ['DE']="raspiBackup_de.conf" ['EN']="raspiBackup_en.conf" )
 CONFIG_FILE="raspiBackup.conf"
-CONFIG_FILE_ABS_PATH="/usr/local/etc"
-CONFIG_FILE_ABS_FILE="$CONFIG_FILE_ABS_PATH/$CONFIG_FILE"
-FILE_TO_INSTALL_ABS_PATH="/usr/local/bin"
-FILE_TO_INSTALL_ABS_FILE="$FILE_TO_INSTALL_ABS_PATH/$FILE_TO_INSTALL"
 SAMPLEEXTENSION_TAR_FILE="raspiBackupSampleExtensions.tgz"
-CRON_SAMPLE_FILE="/etc/cron.d/raspiBackup"
+
 read -r -d '' CRON_SAMPLE_CONTENTS <<-'EOF'
 #
 # Sample crontab entry for raspiBackup.sh
@@ -54,12 +49,11 @@ EOF
 
 TAIL=0
 
-PROPERTY_URL="/downloads/raspibackup0613-properties/download"
-BETA_CODE_URL="/downloads/$FILE_TO_INSTALL_BETA/download"
+PROPERTY_URL="downloads/raspibackup0613-properties/download"
+BETA_CODE_URL="downloads/$FILE_TO_INSTALL_BETA/download"
 STABLE_CODE_URL="$FILE_TO_INSTALL"
 
-DOWNLOAD_TIMEOUT=3 # seconds
-DOWNLOAD_RETRIES=3
+DOWNLOAD_TIMEOUT=60 # seconds
 
 [[ -z ${LANG+x} ]] && LANG="EN"
 LANG_EXT=${LANG^^*}
@@ -67,8 +61,6 @@ MESSAGE_LANGUAGE=${LANG_EXT:0:2}
 if [[ $MESSAGE_LANGUAGE != "DE" && $MESSAGE_LANGUAGE != "EN" ]]; then
 	MESSAGE_LANGUAGE="EN"
 fi
-
-NL=$'\n'
 
 MSG_EN=1      # english	(default)
 MSG_DE=1      # german
@@ -184,14 +176,14 @@ MSG_BETAVERSION_AVAILABLE=33
 MSG_EN[$MSG_BETAVERSION_AVAILABLE]="${MSG_PRF}0033I: Beta version %1 is available."
 MSG_DE[$MSG_BETAVERSION_AVAILABLE]="${MSG_PRF}0033I: Beta Version %1 ist verfügbar."
 MSG_ASK_INSTALLBETA=34
-MSG_EN[$MSG_ASK_INSTALLBETA]="${MSG_PRF}0034I: Install beta version (y|n)"
-MSG_DE[$MSG_ASK_INSTALLBETA]="${MSG_PRF}0034I: Soll die Betaversion installiert werden (j|n)"
-#MSG_BETA_MESSAGE=35
-#MSG_EN[$MSG_BETA_MESSAGE]="!!! RBK0035I: =========> NOTE  <========= "
-#MSG_DE[$MSG_BETA_MESSAGE]="!!! RBK0035I: =========> HINWEIS <========="
+MSG_EN[$MSG_ASK_INSTALLBETA]="${MSG_PRF}0034I: Install beta version (Y|n)"
+MSG_DE[$MSG_ASK_INSTALLBETA]="${MSG_PRF}0034I: Soll die Betaversion installiert werden (J|n)"
+MSG_INSTALLING_BETA=35
+MSG_EN[$MSG_INSTALLING_BETA]="${MSG_PRF}0035I: Installing beta version %1"
+MSG_DE[$MSG_INSTALLING_BETA]="${MSG_PRF}0035I: Die Betaversion %1 wird installiert"
 MSG_BETA_THANKYOU=36
-MSG_EN[$MSG_BETA_THANKYOU]="${MSG_PRF}0036I: Thank you very much for helping to test $FILE_TO_INSTALL %1."
-MSG_DE[$MSG_BETA_THANKYOU]="${MSG_PRF}0036I: Vielen Dank für die Hilfe beim Testen von $FILE_TO_INSTALL %1."
+MSG_EN[$MSG_BETA_THANKYOU]="${MSG_PRF}0036I: Thank you very much for helping to test %1 %2."
+MSG_DE[$MSG_BETA_THANKYOU]="${MSG_PRF}0036I: Vielen Dank für die Hilfe beim Testen von %1 %2."
 MSG_CODE_INSTALLED=37
 MSG_EN[$MSG_CODE_INSTALLED]="${MSG_PRF}0037I: Created %1."
 MSG_DE[$MSG_CODE_INSTALLED]="${MSG_PRF}0037I: %1 wurde erstellt."
@@ -229,8 +221,32 @@ MSG_SELECTED_CONFIG_PARMS2=48
 MSG_EN[$MSG_SELECTED_CONFIG_PARMS2]="${MSG_PRF}0048I: Selected configuration: Compress backups: %1, Number of backups: %2, Verbose messages: %3"
 MSG_DE[$MSG_SELECTED_CONFIG_PARMS2]="${MSG_PRF}0048I: Gewählte Konfiguration: Backup komprimieren: %1, Anzahl Backups: %2, Ausführliche Meldungen: %3"
 MSG_INSTALLING_CRON_TEMPLATE=49
-MSG_EN[$MSG_INSTALLING_CRON_TEMPLATE]="${MSG_PRF}0049I: Creating sample cron file $CRON_SAMPLE_FILE"
-MSG_DE[$MSG_INSTALLING_CRON_TEMPLATE]="${MSG_PRF}0049I: Beispieldatei für cron $CRON_SAMPLE_FILE wird erstellt"
+MSG_EN[$MSG_INSTALLING_CRON_TEMPLATE]="${MSG_PRF}0049I: Creating sample cron file %1."
+MSG_DE[$MSG_INSTALLING_CRON_TEMPLATE]="${MSG_PRF}0049I: Beispieldatei für cron %1 wird erstellt."
+MSG_BIN_DIR_NOT_FOUND=50
+MSG_EN[$MSG_BIN_DIR_NOT_FOUND]="${MSG_PRF}0050E: %1 does not exist. Use option -B to define the bin target directory."
+MSG_DE[$MSG_BIN_DIR_NOT_FOUND]="${MSG_PRF}0050E: %1 existiert nicht. Benutze Option -B um das bin Zielverzeichnis anzugeben."
+MSG_ETC_DIR_NOT_FOUND=51
+MSG_EN[$MSG_ETC_DIR_NOT_FOUND]="${MSG_PRF}0051E: %1 does not exist. Use option -E to define the etc target directory."
+MSG_DE[$MSG_ETC_DIR_NOT_FOUND]="${MSG_PRF}0051E: %1 existiert nicht. Benutze Option -E um das etc Zielverzeichnis anzugeben."
+MSG_CRON_DIR_NOT_FOUND=52
+MSG_EN[$MSG_CRON_DIR_NOT_FOUND]="${MSG_PRF}0052E: %1 does not exist. Use option -C to define the cron target directory."
+MSG_DE[$MSG_CRON_DIR_NOT_FOUND]="${MSG_PRF}0052E: %1 existiert nicht. Benutze Option -C um das cron Zielverzeichnis anzugeben."
+MSG_INSTALLING_VERSION=53
+MSG_EN[$MSG_INSTALLING_VERSION]="${MSG_PRF}0053I: Installing $FILE_TO_INSTALL %1."
+MSG_DE[$MSG_INSTALLING_VERSION]="${MSG_PRF}0053I: Installiere $FILE_TO_INSTALL %1."
+MSG_LOGFILE_ERROR=54
+MSG_EN[$MSG_LOGFILE_ERROR]="${MSG_PRF}0054E: Unable to create logfile %1."
+MSG_DE[$MSG_LOGFILE_ERROR]="${MSG_PRF}0054E: Logdatei %1 kann nicht erstellt werden."
+MSG_USING_LOGFILE=55
+MSG_EN[$MSG_USING_LOGFILE]="${MSG_PRF}0055I: Using logfile %1."
+MSG_DE[$MSG_USING_LOGFILE]="${MSG_PRF}0055I: Logdatei ist %1 ."
+MSG_NO_INTERNET_CONNECTION_FOUND=56
+MSG_EN[$MSG_NO_INTERNET_CONNECTION_FOUND]="${MSG_PRF}0056E: Unable to connect to internet. wget RC: %1"
+MSG_DE[$MSG_NO_INTERNET_CONNECTION_FOUND]="${MSG_PRF}0056E: Es existiert keine Internetverbindung. wget RC: %1"
+MSG_CHECK_INTERNET_CONNECTION=57
+MSG_EN[$MSG_CHECK_INTERNET_CONNECTION]="${MSG_PRF}0057I: Checking internet connection."
+MSG_DE[$MSG_CHECK_INTERNET_CONNECTION]="${MSG_PRF}0057I: Teste Internetverbindung."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -257,13 +273,20 @@ function cleanup() {
 
 	local rc=$?
 
+	local signal="$1"
+
 	TAIL=0
 	if (( $INSTALLATION_STARTED )); then
 		if (( ! $INSTALLATION_SUCCESSFULL )); then
+			echo
 			writeToConsole $MSG_CLEANUP
 			(( $CONFIG_INSTALLED )) && rm $CONFIG_FILE_ABS_FILE &>>$LOG_FILE || true
 			(( $SCRIPT_INSTALLED )) && rm $FILE_TO_INSTALL_ABS_FILE &>>$LOG_FILE || true
-			writeToConsole $MSG_INSTALLATION_FAILED "$RASPIBACKUP_NAME" "$LOG_FILE"
+			if [[ "$signal" == "SIGINT" ]]; then
+				rm $LOG_FILE &>/dev/null || true
+			else
+				writeToConsole $MSG_INSTALLATION_FAILED "$RASPIBACKUP_NAME" "$LOG_FILE"
+			fi
 			rc=127
 		else
 			if (( ! $INSTALLATION_WARNING )); then
@@ -271,8 +294,6 @@ function cleanup() {
 			fi
 			rm $LOG_FILE &>/dev/null || true
 		fi
-	else
-		rm -f $LOG_FILE &>/dev/null || true
 	fi
 
 	(( $INSTALL_EXTENSIONS )) && rm $SAMPLEEXTENSION_TAR_FILE &>>$LOG_FILE || true
@@ -385,7 +406,7 @@ function downloadCode() {
 		oldVersion=$(grep "^VERSION=" $FILE_TO_INSTALL_ABS_FILE | cut -f 2 -d = | sed  "s/\"//g" | sed "s/ .*#.*//")
 		newName="$FILE_TO_INSTALL_ABS_FILE.$oldVersion.sh"
 		writeToConsole $MSG_SAVING_FILE "$FILE_TO_INSTALL" "$newName"
-		mv $FILE_TO_INSTALL_ABS_FILE $newName
+		mv $FILE_TO_INSTALL_ABS_FILE $newName &>>$LOG_FILE
 	elif (( $REFRESH_SCRIPT )); then
 		writeToConsole $MSG_NO_INSTALLATION_FOUND
 		INSTALLATION_WARNING=1
@@ -402,26 +423,26 @@ function downloadCode() {
 
 	SCRIPT_INSTALLED=1
 
-	httpCode=$(curl -s -o $FILE_TO_INSTALL -w %{http_code} -L "$MYHOMEURL/$FILE_TO_INSTALL_URL" 2>>$LOG_FILE)
+	httpCode=$(curl -s -o "/tmp/$FILE_TO_INSTALL" -m $DOWNLOAD_TIMEOUT -w %{http_code} -L "$MYHOMEURL/$FILE_TO_INSTALL_URL" 2>>$LOG_FILE)
 	if [[ ${httpCode:0:1} != "2" ]]; then
 		writeToConsole $MSG_DOWNLOAD_FAILED "$FILE_TO_INSTALL" "$httpCode"
 		unrecoverableError
 	fi
 
-	if [[ $FILE_TO_INSTALL != $FILE_TO_INSTALL_ABS_FILE ]]; then
-		if ! mv $FILE_TO_INSTALL $FILE_TO_INSTALL_ABS_FILE &>>$LOG_FILE; then
-			writeToConsole $MSG_MOVE_FAILED "$FILE_TO_INSTALL_ABS_FILE"
-			unrecoverableError
-		fi
+	if ! mv "/tmp/$FILE_TO_INSTALL" "$FILE_TO_INSTALL_ABS_FILE" &>>$LOG_FILE; then
+		writeToConsole $MSG_MOVE_FAILED "$FILE_TO_INSTALL_ABS_FILE"
+		unrecoverableError
+	fi
 
-		writeToConsole $MSG_CODE_INSTALLED "$FILE_TO_INSTALL_ABS_FILE"
+	writeToConsole $MSG_CODE_INSTALLED "$FILE_TO_INSTALL_ABS_FILE"
 
-		if ! chmod 755 $FILE_TO_INSTALL_ABS_FILE &>>$LOG_FILE; then
-			writeToConsole $MSG_CHMOD_FAILED "$FILE_TO_INSTALL_ABS_FILE"
-			unrecoverableError
-		fi
+	if ! chmod 755 $FILE_TO_INSTALL_ABS_FILE &>>$LOG_FILE; then
+		writeToConsole $MSG_CHMOD_FAILED "$FILE_TO_INSTALL_ABS_FILE"
+		unrecoverableError
+	fi
 
-		if ! cp -f "$MYDIR/$MYSELF" $FILE_TO_INSTALL_ABS_PATH &>>$LOG_FILE; then
+	if [[ "$MYDIR/$MYSELF" != "$FILE_TO_INSTALL_ABS_PATH/$MYSELF" ]]; then
+		if ! mv -f "$MYDIR/$MYSELF" "$FILE_TO_INSTALL_ABS_PATH" &>>$LOG_FILE; then
 			writeToConsole $MSG_MOVE_FAILED "$FILE_TO_INSTALL_ABS_PATH/$MYSELF"
 			unrecoverableError
 		fi
@@ -450,13 +471,13 @@ function downloadConfig() {
 		oldVersion=$(grep "^VERSION=" $FILE_TO_INSTALL_ABS_FILE | cut -f 2 -d = | sed  "s/\"//g" | sed "s/ .*#.*//")
 		newName="$CONFIG_FILE_ABS_FILE.$oldVersion"
 		writeToConsole $MSG_SAVING_FILE "$CONFIG_FILE" "$newName"
-		mv $CONFIG_FILE_ABS_FILE $newName &>>$LOG_FILE
+		[[ "$FILE_TO_INSTALL_ABS_FILE" != "$newName" ]] && mv $CONFIG_FILE $newName &>>$LOG_FILE
 	fi
 
 	writeToConsole $MSG_DOWNLOADING "$CONFIG_FILE"
 	CONFIG_INSTALLED=1
 
-	httpCode=$(curl -s -o $CONFIG_FILE_ABS_FILE -w %{http_code} -L "https://$URL/$confFile" 2>>$LOG_FILE)
+	httpCode=$(curl -s -o $CONFIG_FILE_ABS_FILE -m $DOWNLOAD_TIMEOUT -w %{http_code} -L "$MYHOMEURL/$confFile" 2>>$LOG_FILE)
 	if [[ ${httpCode:0:1} != "2" ]]; then
 		writeToConsole $MSG_DOWNLOAD_FAILED "$confFile" "$httpCode"
 		unrecoverableError
@@ -580,15 +601,20 @@ function usageEN() {
 	echo ""
 	echo "Install and configure raspiBackup.sh"
 	echo ""
-	echo "Usage: sudo $0 [[-c] [-l DE | EN]] | [-u] | [-h]"
+	echo "Usage: sudo $0 [[-c] [-l DE | EN]] | [-U] | [-h]"
 	echo ""
 	echo "       No options will start a configuration wizzard and prompt for the most important configuration parameters"
 	echo ""
 	echo "       -b - Install the beta version if available"
-	echo "       -c - Install default config file in $CONFIG_FILE_ABS_FILE"
+	echo "       -B <directory> - Define the bin target directory"
+	echo "       -c - Install default config file"
+	echo "       -C <directory> - Define the cron target directory"
 	echo "       -e - Install and configure sampleextensions"
+	echo "       -E <directory> - Define the etc target directory"
+	echo "       -h - Show this help text"
 	echo "       -k - Keep installscript after successful installation"
 	echo "       -l - Install English (EN) or German (DE) version of the config file"
+	echo "       -L <directory - Logdirectory"
 	echo "       If -c is used without -l the current system language is used for the config file"
 	echo "       -r - Updates the local script version with the latest script version available (Current configuration file will not be modified)"
 	echo ""
@@ -600,15 +626,20 @@ function usageDE() {
 	echo ""
 	echo "Installiere und konfiguriere raspiBackup.sh"
 	echo ""
-	echo "Aufruf: sudo $0 [[-c] [-l DE | EN]] | [-u] | [-h]"
+	echo "Aufruf: sudo $0 [[-c] [-l DE | EN]] | [-U] | [-h]"
 	echo ""
 	echo "       Falls keine Optionen angegeben wurde werden die wichtigsten Konfigurationsparameter abgefragt"
 	echo ""
 	echo "       -b - Installiert eine Betaversion sofern verfügbar"
-	echo "       -c - Installiert die Standardkonfigurationsdatei in $CONFIG_FILE_ABS_FILE"
+	echo "       -B <directory> - Definiert das bin Zielverzeichnis"
+	echo "       -c - Installiert die Standardkonfigurationsdatei"
+	echo "       -C <directory> - Definiert das cron Zielverzeichnis"
 	echo "       -e - Installiert und konfiguriert die Beispielerweiterungen"
+	echo "       -E <directory> - Definiert das etc Zielverzeichnis"
+	echo "       -h - Anzeige dieses Hilfetextes"
 	echo "       -k - Installationsscript wird am Ende der Installation nicht gelöscht"
 	echo "       -l - Installiert die englische (EN) oder Deutsche (DE) Version der Konfigurationsdatei"
+	echo "       -L <directory> - Logverzeichnis"
 	echo "       Wenn -c ohne -l benutzt wird wird die Systemsprache für die Konfigurationsdatei benutzt"
 	echo "       -r - Ersetzt die lokale Scriptversion durch die neueste verfügbare Scriptversion (Die aktuelle Configurationsdatei wird nicht geändert)"
 	echo ""
@@ -621,23 +652,41 @@ fn_exists() {
 	[ `type -t $1`"" == 'function' ]
 }
 
-function checkIfBetaAvailable() {
+function checkForInternetconnection() {
+
+	writeToConsole $MSG_CHECK_INTERNET_CONNECTION
+
+	wget -q --spider $MYHOMEDOMAIN
+    local rc=$?
+    if [[ $rc != 0  ]]; then
+		writeToConsole $MSG_NO_INTERNET_CONNECTION_FOUND $rc
+		unrecoverableError
+    fi
+}
+
+function getVersions() {
 
 	local downloadURL="$MYHOMEURL/$PROPERTY_URL"
-	local betaVersion=""
 
 	local tmpFile=$(mktemp)
 
-	wget $downloadURL -q --tries=$DOWNLOAD_RETRIES --timeout=$DOWNLOAD_TIMEOUT -O $tmpFile
-	local rc=$?
-	if [[ $rc == 0 ]]; then
+	writeToConsole $MSG_DOWNLOADING "$downloadURL"
+
+	httpCode=$(curl -s -o $tmpFile -m $DOWNLOAD_TIMEOUT -w %{http_code} -L "$downloadURL" 2>>$LOG_FILE)
+
+	if [[ ${httpCode:0:1} == "2" ]]; then
 		properties=$(grep "^BETA=" "$tmpFile" 2>/dev/null)
-		local betaVersion=$(cut -d '=' -f 2 <<< $properties)
+		betaVersion=$(cut -d '=' -f 2 <<< $properties)
 		betaVersion=${betaVersion//\"/}
+		properties=$(grep "^VERSION=" "$tmpFile" 2>/dev/null)
+		raspiBackupVersion=$(cut -d '=' -f 2 <<< $properties)
+		raspiBackupVersion=${raspiBackupVersion//\"/}
+	else
+		writeToConsole $MSG_DOWNLOAD_FAILED "$downloadURL" $httpCode
+		unrecoverableError
 	fi
 
 	rm $tmpFile
-	echo $betaVersion
 }
 
 function usage() {
@@ -660,23 +709,29 @@ function install() {
 
 	if (( $REFRESH_SCRIPT )); then
 		downloadCode
+
 	elif (( $INSTALL_CONFIG )); then
 		downloadCode
 		downloadConfig
-	else
-		configWizzard
-		downloadCode
-		downloadConfig
-		updateConfig
-		createSampleCronfile
-fi
 
-INSTALLATION_SUCCESSFULL=1
+	else
+		if (( $BETA_INSTALL )) && [[ -f $CONFIG_FILE_ABS_FILE ]]; then
+			downloadCode
+		else
+			configWizzard
+			downloadCode
+			downloadConfig
+			updateConfig
+			createSampleCronfile
+		fi
+	fi
+
+	INSTALLATION_SUCCESSFULL=1
 
 }
 
 function createSampleCronfile() {
-	writeToConsole $MSG_INSTALLING_CRON_TEMPLATE
+	writeToConsole $MSG_INSTALLING_CRON_TEMPLATE "$CRON_SAMPLE_FILE"
 	echo "$CRON_SAMPLE_CONTENTS" > "$CRON_SAMPLE_FILE"
 }
 
@@ -686,7 +741,7 @@ function installExtensions() {
 
 	writeToConsole $MSG_DOWNLOADING "${SAMPLEEXTENSION_TAR_FILE%.*}"
 
-	httpCode=$(curl -s -o $SAMPLEEXTENSION_TAR_FILE -w %{http_code} -L "$MYHOMEURL/$SAMPLEEXTENSION_TAR_FILE" 2>>$LOG_FILE)
+	httpCode=$(curl -s -o $SAMPLEEXTENSION_TAR_FILE -m $DOWNLOAD_TIMEOUT -w %{http_code} -L "$MYHOMEURL/$SAMPLEEXTENSION_TAR_FILE" 2>>$LOG_FILE)
 	if [[ ${httpCode:0:1} != "2" ]]; then
 		writeToConsole $MSG_DOWNLOAD_FAILED "$SAMPLEEXTENSION_TAR_FILE" "$httpCode"
 		unrecoverableError
@@ -754,16 +809,26 @@ UNINSTALL=0
 BETA_INSTALL=0
 REFRESH_SCRIPT=0
 INSTALL_EXTENSIONS=0
+BIN_DIR="/usr/local/bin"
+ETC_DIR="/usr/local/etc"
+CRON_DIR="/etc/cron.d"
+LOG_FILE="$MYNAME.log"
 
 trapWithArg cleanup SIGINT SIGTERM EXIT
 
-while getopts ":bcel:hrU" opt; do
+while getopts ":bB:cC:eE:l:L:hrU" opt; do
    case $opt in
 		b) 	BETA_INSTALL=1
 			;;
+		B)	BIN_DIR="$OPTARG"
+			;;
 		c)  INSTALL_CONFIG=1
 			;;
+		C) 	CRON_DIR="$OPTARG"
+			;;
 		e)	INSTALL_EXTENSIONS=1
+			;;
+		E) 	ETC_DIR="$OPTARG"
 			;;
 		l) 	LANG_PRF=$(tr '[:lower:]' '[:upper:]' <<< "$OPTARG")
 			if [[ $LANG_PRF != "DE" && $LANG_PRF != "EN" ]]; then
@@ -773,10 +838,14 @@ while getopts ":bcel:hrU" opt; do
 				MESSAGE_LANGUAGE=$LANG_PRF
 			fi
 			;;
-		h)  	usage
+		L)	if [[ -d "$OPTARG" ]]; then
+				LOG_FILE="$OPTARG/$LOG_FILE"
+			fi
+			;;
+		h)  usage
 			exitNormal
 			;;
-		r)  	REFRESH_SCRIPT=1
+		r)  REFRESH_SCRIPT=1
 			;;
 		U)	UNINSTALL=1
 			;;
@@ -792,11 +861,41 @@ done
 writeToConsole $MSG_VERSION "$GIT_CODEVERSION"
 
 if (( $UID != 0 )); then
+	usage
+	echo
 	writeToConsole $MSG_SUDO_REQUIRED "$0 $passedOpts"
 	exitWarning
 fi
 
+if ! touch "$LOG_FILE"; then
+	writeToConsole $MSG_LOGFILE_ERROR "$LOG_FILE"
+	exitWarning
+fi
+
+writeToConsole $MSG_USING_LOGFILE "$LOG_FILE"
+
 rm $LOG_FILE &>/dev/null || true
+
+if [[ ! -d "$CRON_DIR" ]]; then
+	writeToConsole $MSG_CRON_DIR_NOT_FOUND "$CRON_DIR"
+	exitWarning
+fi
+
+if [[ ! -d "$ETC_DIR" ]]; then
+	writeToConsole $MSG_ETC_DIR_NOT_FOUND "$ETC_DIR"
+	exitWarning
+fi
+
+if [[ ! -d "$BIN_DIR" ]]; then
+	writeToConsole $MSG_BIN_DIR_NOT_FOUND "$BIN_DIR"
+	exitWarning
+fi
+
+CONFIG_FILE_ABS_PATH="$ETC_DIR"
+CONFIG_FILE_ABS_FILE="$CONFIG_FILE_ABS_PATH/$CONFIG_FILE"
+FILE_TO_INSTALL_ABS_PATH="$BIN_DIR"
+FILE_TO_INSTALL_ABS_FILE="$FILE_TO_INSTALL_ABS_PATH/$FILE_TO_INSTALL"
+CRON_SAMPLE_FILE="$CRON_DIR/$RASPIBACKUP_NAME"
 
 case $MESSAGE_LANGUAGE in
 	DE) confFile=${CONFIG_DOWNLOAD_FILE["DE"]}
@@ -810,25 +909,35 @@ if (( $UNINSTALL )); then
 	exitNormal
 fi
 
+checkForInternetconnection
+
 if (( $INSTALL_EXTENSIONS )); then
 	installExtensions
 	exitNormal
 fi
 
 writeToConsole $MSG_CHECKING_FOR_BETA
-beta=$(checkIfBetaAvailable)
-if [[ -n "$beta" ]]; then
-	writeToConsole $MSG_BETAVERSION_AVAILABLE "$beta"
+getVersions
+
+if [[ -n "$betaVersion" ]]; then
+	writeToConsole $MSG_BETAVERSION_AVAILABLE "$betaVersion"
 	if (( ! $BETA_INSTALL )); then
-		askFor $MSG_ASK_INSTALLBETA $(getLocalizedMessage $MSG_ANSWER_CHARS_YES_NO) $(getLocalizedMessage $MSG_ANSWER_CHARS_ye)
-		[[ $REPLY =~ $YES ]] && BETA_INSTALL=1
+		askFor $MSG_ASK_INSTALLBETA $(getLocalizedMessage $MSG_ANSWER_CHARS_YES_NO) $(getLocalizedMessage $MSG_ANSWER_CHARS_YES)
+		if [[ $REPLY =~ $YES ]]; then
+			BETA_INSTALL=1
+			writeToConsole $MSG_INSTALLING_BETA "$betaVersion"
+		fi
 	fi
 elif (( $BETA_INSTALL )); then
 	writeToConsole $MSG_NO_BETA_AVAILABLE
 	exitNormal
 fi
 
+if (( ! $BETA_INSTALL )); then
+	writeToConsole $MSG_INSTALLING_VERSION "$raspiBackupVersion"
+fi
+
 install
-(( $BETA_INSTALL && $INSTALLATION_SUCCESSFULL )) && writeToConsole $MSG_BETA_THANKYOU "$beta"
+(( $BETA_INSTALL && $INSTALLATION_SUCCESSFULL )) && writeToConsole $MSG_BETA_THANKYOU "$FILE_TO_INSTALL" "$betaVersion"
 
 # vim: set expandtab tabstop=8 shiftwidth=8 autoindent smartindent
